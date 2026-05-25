@@ -1,11 +1,175 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, Eye, MapPin, X, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, MapPin, X, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Camera, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
 const TYPE_ICONS = { photographes: '📸', traiteurs: '🍽️', decorateurs: '💐', animateurs: '🎵', fleuristes: '🌸', 'locations-salles': '🏛️' };
+
+const OPT_CATEGORIES = ['Équipement', 'Forfait', 'Accessoire', 'Studio', 'Autre'];
+
+const uploadImage = async file => {
+  const fd = new FormData(); fd.append('image', file);
+  const r = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return r.data.url;
+};
+
+const ImagePicker = ({ value, onChange }) => {
+  const [uploading, setUploading] = useState(false);
+  const handleFile = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setUploading(true);
+    try { onChange(await uploadImage(file)); } catch { toast.error('Erreur upload image'); }
+    setUploading(false);
+  };
+  return (
+    <div>
+      <label className="flex items-center gap-2 cursor-pointer w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+        style={{ border: '1px dashed rgba(147,197,253,0.4)', color: '#93C5FD', background: 'rgba(147,197,253,0.06)' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(147,197,253,0.12)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'rgba(147,197,253,0.06)'}>
+        <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        {uploading ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Upload size={12} />}
+        {value ? 'Changer la photo' : 'Choisir une photo'}
+      </label>
+      {value && (
+        <div className="relative mt-2 w-24">
+          <img src={value} alt="preview" className="h-16 w-24 object-cover rounded-lg" onError={e => { e.target.style.display='none'; }} />
+          <button type="button" onClick={() => onChange('')}
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white"
+            style={{ background: '#EF4444', fontSize: 9 }}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+function OptionRow({ opt, providerId, onRefresh, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [itemInput, setItemInput] = useState('');
+  const parseItems = v => { try { return JSON.parse(v || '[]'); } catch { return []; } };
+  const [form, setForm] = useState({
+    name: opt.name || '', description: opt.description || '', price: opt.price || '',
+    category: opt.category || 'Standard', sort_order: opt.sort_order || 0,
+    is_active: Boolean(opt.is_active), image_url: opt.image_url || '', includes_standard: Boolean(opt.includes_standard),
+    includes_items: parseItems(opt.includes_items),
+  });
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/providers/${providerId}/options/${opt.id}`, {
+        name: form.name, description: form.description || null, price: Number(form.price) || 0,
+        category: form.category, sort_order: Number(form.sort_order) || 0, is_active: form.is_active,
+        image_url: form.image_url || null, includes_standard: form.includes_standard,
+        includes_items: form.includes_items,
+      });
+      toast.success('Option mise à jour'); onRefresh();
+    } catch { toast.error('Erreur'); }
+    setSaving(false);
+  };
+  const quickToggle = async () => {
+    const next = !form.is_active; setForm(f => ({ ...f, is_active: next }));
+    try {
+      await api.put(`/providers/${providerId}/options/${opt.id}`, { ...form, price: Number(form.price)||0, is_active: next, image_url: form.image_url||null, includes_standard: form.includes_standard });
+      toast.success(next ? 'Activée' : 'Désactivée');
+    } catch { setForm(f => ({ ...f, is_active: !next })); toast.error('Erreur'); }
+  };
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--adm-border)', background: 'var(--adm-surface2)' }}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <button onClick={quickToggle} className="flex-shrink-0">
+          {form.is_active ? <ToggleRight size={20} style={{ color: '#34D399' }} /> : <ToggleLeft size={20} style={{ color: 'var(--adm-text2)' }} />}
+        </button>
+        {form.image_url && <img src={form.image_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" onError={e => { e.currentTarget.style.display='none'; }} />}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--adm-text)' }}>{form.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs" style={{ color: 'var(--adm-text2)' }}>{form.category}</p>
+            {form.includes_standard && <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(147,197,253,0.15)', color: '#93C5FD' }}>forfait</span>}
+          </div>
+        </div>
+        <span className="text-sm font-bold flex-shrink-0 font-display" style={{ color: '#E8DCD5' }}>{Number(form.price).toLocaleString('fr-TN')} TND</span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={() => setOpen(o => !o)} className="p-1.5 rounded-lg" style={{ color: 'var(--adm-text2)' }}>
+            {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+          <button onClick={() => onDelete(opt.id)} className="p-1.5 rounded-lg" style={{ color: 'var(--adm-text2)' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#F87171'} onMouseLeave={e => e.currentTarget.style.color = 'var(--adm-text2)'}>
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="px-4 pb-4 space-y-3 border-t" style={{ borderColor: 'var(--adm-border)' }}>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Nom *</label>
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="adm-input w-full text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Catégorie</label>
+                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="adm-input w-full text-sm">
+                    {OPT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Prix (TND) *</label>
+                  <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="adm-input w-full text-sm" min="0" step="10" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Description</label>
+                  <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="adm-input w-full text-sm" placeholder="Optionnel..." />
+                </div>
+                {form.category === 'Forfait' && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Éléments inclus</label>
+                    <div className="flex gap-2 mb-2">
+                      <input value={itemInput} onChange={e => setItemInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = itemInput.trim(); if (v) { setForm(f => ({ ...f, includes_items: [...f.includes_items, v] })); setItemInput(''); }}}}
+                        className="adm-input flex-1 text-sm" placeholder="Ajouter un élément (Entrée)" />
+                      <button type="button" onClick={() => { const v = itemInput.trim(); if (v) { setForm(f => ({ ...f, includes_items: [...f.includes_items, v] })); setItemInput(''); }}}
+                        className="adm-btn-primary text-xs px-3"><Plus size={13} /></button>
+                    </div>
+                    {form.includes_items.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {form.includes_items.map((item, i) => (
+                          <span key={i} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                            style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', color: '#34D399' }}>
+                            {item}
+                            <button type="button" onClick={() => setForm(f => ({ ...f, includes_items: f.includes_items.filter((_, j) => j !== i) }))}
+                              className="ml-0.5 hover:text-red-400">✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Photo</label>
+                  <ImagePicker value={form.image_url} onChange={url => setForm(f => ({ ...f, image_url: url }))} />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--adm-text2)' }}>
+                <input type="checkbox" checked={form.includes_standard} onChange={e => setForm(f => ({ ...f, includes_standard: e.target.checked }))} className="w-4 h-4 rounded accent-blue-400" />
+                Forfait — inclut le frais de base
+              </label>
+              <div className="flex justify-end">
+                <button onClick={save} disabled={saving} className="adm-btn-primary text-sm gap-2 px-5">
+                  {saving ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin-slow" /> : null}
+                  Sauvegarder
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 const GOUVERNORATS = ['Tunis','Ariana','Ben Arous','Manouba','Nabeul','Zaghouan','Bizerte','Béja','Jendouba','Le Kef','Siliana','Kairouan','Kasserine','Sidi Bouzid','Sousse','Monastir','Mahdia','Sfax','Gafsa','Tozeur','Kebili','Gabès','Médenine','Tataouine'];
 
 const FormSection = ({ title, children }) => (
@@ -22,6 +186,8 @@ const Field = ({ label, children }) => (
   </div>
 );
 
+const FIXED_PIECES = [5, 7, 10];
+
 const ProviderForm = ({ provider, types, onSave, onClose }) => {
   const [form, setForm] = useState({
     type_id: provider?.type_id || '',
@@ -36,36 +202,151 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
     governorate: provider?.governorate || '',
     logo: provider?.logo || '',
     cover_image: provider?.cover_image || '',
-    price_min: provider?.price_min || '',
-    price_max: provider?.price_max || '',
+    standard_fee: provider?.standard_fee || '',
+    commission_percentage: provider?.commission_percentage ?? 15,
     is_featured: provider?.is_featured || false,
     is_active: provider?.is_active !== undefined ? provider.is_active : true,
     meta_title: provider?.meta_title || '',
     meta_description: provider?.meta_description || '',
   });
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab]         = useState('info');
+  const [loading, setLoading]       = useState(false);
+  const [tab, setTab]               = useState('info');
+  const [packs, setPacks]           = useState(FIXED_PIECES.map(pc => ({ pieces_count: pc, price_per_person: '', discount_percentage: '0', is_active: true, fixed_items: [] })));
+  const [packItemInputs, setPackItemInputs] = useState({});
+  const [packsLoading, setPacksLoading] = useState(false);
+  const [packsSaving, setPacksSaving]   = useState(false);
+  const [savedProvider, setSavedProvider] = useState(provider || null);
+  const [options, setOptions]       = useState([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [showAddOpt, setShowAddOpt] = useState(false);
+  const [addOptForm, setAddOptForm] = useState({ name: '', price: '', category: 'Équipement', description: '', image_url: '', includes_standard: false, includes_items: [] });
+  const [addOptItemInput, setAddOptItemInput] = useState('');
+  const [addOptSaving, setAddOptSaving] = useState(false);
+
+  const selectedType  = types.find(t => String(t.id) === String(form.type_id));
+  const isTraiteur    = selectedType?.slug === 'traiteurs';
+  const isPhotographe = selectedType?.slug === 'photographes';
 
   const TABS = [
-    { id: 'info', label: 'Infos générales' },
+    { id: 'info',    label: 'Infos générales' },
     { id: 'contact', label: 'Contact & Lieu' },
-    { id: 'media', label: 'Médias & Prix' },
-    { id: 'seo', label: 'SEO' },
+    { id: 'media',   label: 'Médias & Prix' },
+    ...(isTraiteur    ? [{ id: 'packs',   label: '🍽️ Packs' }]   : []),
+    ...(isPhotographe ? [{ id: 'options', label: '📸 Options' }]  : []),
   ];
+
+  const newOption = () => ({ _key: Date.now(), id: null, name: '', description: '', price: '', category: 'Standard', includes_standard: false, is_active: true });
+
+  const addOption    = () => setOptions(o => [...o, newOption()]);
+  const removeOption = (key, id) => {
+    setOptions(o => o.filter(op => op._key !== key));
+    if (id) setDeletedOptionIds(d => [...d, id]);
+  };
+  const updateOption = (key, field, val) =>
+    setOptions(o => o.map(op => op._key === key ? { ...op, [field]: val } : op));
+
+  const activeProviderId = savedProvider?.id || provider?.id;
+
+  const loadOptions = () => {
+    if (!activeProviderId) return;
+    setOptionsLoading(true);
+    api.get(`/providers/${activeProviderId}/options/admin`)
+      .then(r => setOptions(r.data.data || []))
+      .catch(() => {})
+      .finally(() => setOptionsLoading(false));
+  };
+
+  useEffect(() => {
+    if (tab !== 'options' || !activeProviderId) return;
+    loadOptions();
+  }, [tab, activeProviderId]);
+
+  const handleDeleteOpt = async id => {
+    if (!window.confirm('Supprimer cette option ?')) return;
+    try { await api.delete(`/providers/${activeProviderId}/options/${id}`); toast.success('Supprimée'); loadOptions(); }
+    catch { toast.error('Erreur'); }
+  };
+
+  const handleAddOpt = async () => {
+    if (!addOptForm.name.trim() || !addOptForm.price) { toast.error('Nom et prix requis'); return; }
+    setAddOptSaving(true);
+    try {
+      await api.post(`/providers/${activeProviderId}/options`, {
+        name: addOptForm.name.trim(), price: Number(addOptForm.price),
+        category: addOptForm.category || 'Équipement', description: addOptForm.description || null,
+        image_url: addOptForm.image_url || null, includes_standard: addOptForm.includes_standard,
+        includes_items: addOptForm.includes_items, sort_order: 99,
+      });
+      toast.success('Option ajoutée');
+      setAddOptForm({ name: '', price: '', category: 'Équipement', description: '', image_url: '', includes_standard: false, includes_items: [] });
+      setAddOptItemInput('');
+      setShowAddOpt(false);
+      loadOptions();
+    } catch { toast.error('Erreur'); }
+    setAddOptSaving(false);
+  };
+
+  useEffect(() => {
+    if (tab !== 'packs' || !provider?.id) return;
+    setPacksLoading(true);
+    api.get(`/providers/${provider.id}/packages/admin`)
+      .then(r => {
+        const existing = r.data.data || [];
+        setPacks(FIXED_PIECES.map(pc => {
+          const found = existing.find(p => Number(p.pieces_count) === pc);
+          const parsedFixed = (() => {
+            if (!found?.fixed_items) return [];
+            if (Array.isArray(found.fixed_items)) return found.fixed_items;
+            try { return JSON.parse(found.fixed_items); } catch { return []; }
+          })();
+          return {
+            pieces_count: pc,
+            price_per_person:    found ? String(found.price_per_person)          : '',
+            discount_percentage: found ? String(found.discount_percentage || 0)  : '0',
+            is_active:           found ? Boolean(Number(found.is_active))         : true,
+            fixed_items:         parsedFixed,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setPacksLoading(false));
+  }, [tab, provider?.id]);
+
+  const handleSavePacks = async () => {
+    if (!provider?.id) { toast.error('Sauvegardez d\'abord le prestataire'); return; }
+    setPacksSaving(true);
+    try {
+      await api.post(`/providers/${provider.id}/packages/traiteur`, { packages: packs });
+      toast.success('Packs mis à jour');
+    } catch { toast.error('Erreur lors de la sauvegarde'); }
+    setPacksSaving(false);
+  };
 
   const handleSubmit = async e => {
     e.preventDefault();
     if (!form.type_id || !form.name) { toast.error('Type et nom requis'); return; }
     setLoading(true);
     try {
-      if (provider) {
-        await api.put(`/providers/${provider.id}`, form);
+      const payload = {
+        ...form,
+        meta_title: form.name,
+        meta_description: form.short_description || form.name,
+      };
+      if (provider || savedProvider) {
+        await api.put(`/providers/${activeProviderId}`, payload);
         toast.success('Prestataire mis à jour');
+        onSave();
       } else {
-        await api.post('/providers', form);
+        const res = await api.post('/providers', payload);
+        const newProv = res.data.data;
         toast.success('Prestataire ajouté');
+        if (isPhotographe && newProv?.id) {
+          setSavedProvider(newProv);
+          setTab('options');
+        } else {
+          onSave();
+        }
       }
-      onSave();
     } catch (err) { toast.error(err.response?.data?.message || 'Erreur'); }
     setLoading(false);
   };
@@ -190,48 +471,291 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
 
           {tab === 'media' && (
             <div className="space-y-4">
-              <Field label="URL Logo">
-                <input type="url" value={form.logo} onChange={e => setForm(f => ({ ...f, logo: e.target.value }))}
-                  className="adm-input w-full" placeholder="https://..." />
-                {form.logo && <img src={form.logo} alt="logo preview" className="mt-2 h-12 rounded-xl object-contain p-1 border" style={{ background: 'var(--adm-surface2)', borderColor: 'var(--adm-border)' }} />}
+              <Field label="Logo">
+                <ImagePicker value={form.logo} onChange={url => setForm(f => ({ ...f, logo: url }))} />
               </Field>
-              <Field label="Image de couverture (URL)">
-                <input type="url" value={form.cover_image} onChange={e => setForm(f => ({ ...f, cover_image: e.target.value }))}
-                  className="adm-input w-full" placeholder="https://..." />
+              <Field label="Image de couverture">
+                <ImagePicker value={form.cover_image} onChange={url => setForm(f => ({ ...f, cover_image: url }))} />
                 {form.cover_image && <img src={form.cover_image} alt="cover preview" className="mt-2 h-28 w-full rounded-xl object-cover" />}
               </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Prix minimum (TND)">
-                  <input type="number" value={form.price_min} onChange={e => setForm(f => ({ ...f, price_min: e.target.value }))}
-                    className="adm-input w-full" placeholder="Ex: 1500" min="0" step="100" />
-                </Field>
-                <Field label="Prix maximum (TND)">
-                  <input type="number" value={form.price_max} onChange={e => setForm(f => ({ ...f, price_max: e.target.value }))}
-                    className="adm-input w-full" placeholder="Ex: 10000" min="0" step="100" />
+              <Field label="Frais de base (TND)">
+                <input type="number" value={form.standard_fee || ''} onChange={e => setForm(f => ({ ...f, standard_fee: e.target.value }))}
+                  className="adm-input w-full" placeholder="Ex: 150" min="0" step="10" />
+              </Field>
+
+              <div className="p-4 rounded-xl border" style={{ background: 'var(--adm-surface2)', borderColor: 'var(--adm-border)' }}>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3 font-display" style={{ color: 'var(--adm-text2)' }}>
+                  Commission plateforme
+                </p>
+                <Field label={`Commission totale (%) — défaut 15% → ${(Number(form.commission_percentage||15)/2).toFixed(1)}% remise client + ${(Number(form.commission_percentage||15)/2).toFixed(1)}% frais plateforme`}>
+                  <div className="flex items-center gap-3">
+                    <input type="number" value={form.commission_percentage} min="0" max="50" step="0.5"
+                      onChange={e => setForm(f => ({ ...f, commission_percentage: e.target.value }))}
+                      className="adm-input w-32 text-center" />
+                    <span className="text-sm" style={{ color: 'var(--adm-text2)' }}>%</span>
+                    <span className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(52,211,153,0.1)', color: '#34D399' }}>
+                      Client : −{(Number(form.commission_percentage||15)/2).toFixed(1)}%
+                    </span>
+                    <span className="text-xs px-2 py-1 rounded-lg" style={{ background: 'rgba(217,165,165,0.1)', color: '#D9A5A5' }}>
+                      Plateforme : +{(Number(form.commission_percentage||15)/2).toFixed(1)}%
+                    </span>
+                  </div>
                 </Field>
               </div>
-              <p className="text-xs italic" style={{ color: 'var(--adm-text2)' }}>Laissez vide pour afficher "Prix sur devis"</p>
             </div>
           )}
 
-          {tab === 'seo' && (
-            <div className="space-y-4">
-              <Field label="Meta titre (SEO)">
-                <input type="text" value={form.meta_title} onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
-                  className="adm-input w-full" placeholder="Titre pour les moteurs de recherche" maxLength={255} />
-                <p className="text-xs mt-1" style={{ color: 'var(--adm-text2)' }}>{form.meta_title.length}/255</p>
-              </Field>
-              <Field label="Meta description (SEO)">
-                <textarea value={form.meta_description} onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))}
-                  className="adm-input w-full resize-none" rows={4} placeholder="Description SEO (160 caractères recommandés)" />
-                <p className={`text-xs mt-1 ${form.meta_description.length > 160 ? 'text-amber-400' : ''}`}
-                  style={{ color: form.meta_description.length <= 160 ? 'var(--adm-text2)' : undefined }}>
-                  {form.meta_description.length}/160
-                </p>
-              </Field>
+
+          {tab === 'packs' && (
+            <div>
+              <p className="text-xs mb-4" style={{ color: 'var(--adm-text2)' }}>
+                Configurez les 3 formules proposées par ce traiteur. Activez ou désactivez chaque option et définissez le prix et la remise.
+              </p>
+              {!provider?.id ? (
+                <div className="rounded-xl p-6 text-center" style={{ background: 'var(--adm-surface2)', border: '1px dashed var(--adm-border)' }}>
+                  <p className="text-sm" style={{ color: 'var(--adm-text2)' }}>Sauvegardez d'abord le prestataire pour configurer ses packs.</p>
+                </div>
+              ) : packsLoading ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-xl skeleton-adm" />)}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {packs.map((pack, i) => (
+                    <div key={pack.pieces_count} className="rounded-xl p-4 border"
+                      style={{ background: 'var(--adm-surface2)', borderColor: pack.is_active ? 'rgba(196,140,140,0.3)' : 'var(--adm-border)' }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🍽️</span>
+                          <span className="font-display font-bold text-sm" style={{ color: 'var(--adm-text)' }}>
+                            {pack.pieces_count} pièces/personne
+                          </span>
+                          {!pack.is_active && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: 'rgba(244,63,94,0.1)', color: '#F87171' }}>Inactif</span>
+                          )}
+                        </div>
+                        <button type="button"
+                          onClick={() => setPacks(p => p.map((pk, j) => j === i ? { ...pk, is_active: !pk.is_active } : pk))}
+                          style={{ color: pack.is_active ? '#10B981' : 'var(--adm-text2)' }}>
+                          {pack.is_active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5 font-display" style={{ color: 'var(--adm-text2)' }}>
+                            Prix / personne (TND)
+                          </label>
+                          <input type="number"
+                            value={pack.price_per_person}
+                            onChange={e => setPacks(p => p.map((pk, j) => j === i ? { ...pk, price_per_person: e.target.value } : pk))}
+                            className="adm-input w-full" placeholder="Ex: 45" min="0" step="1" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1.5 font-display" style={{ color: 'var(--adm-text2)' }}>
+                            Remise (%)
+                          </label>
+                          <input type="number"
+                            value={pack.discount_percentage}
+                            onChange={e => setPacks(p => p.map((pk, j) => j === i ? { ...pk, discount_percentage: e.target.value } : pk))}
+                            className="adm-input w-full" placeholder="0" min="0" max="100" step="1" />
+                        </div>
+                      </div>
+                      {pack.price_per_person && Number(pack.discount_percentage) > 0 && (
+                        <p className="text-xs mt-2 font-semibold" style={{ color: '#34D399' }}>
+                          Prix après remise : {Math.round(Number(pack.price_per_person) * (1 - Number(pack.discount_percentage) / 100))} TND/pers.
+                        </p>
+                      )}
+
+                      {/* Pièces fixes */}
+                      <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--adm-border)' }}>
+                        <label className="block text-xs font-semibold mb-2 font-display" style={{ color: 'var(--adm-text2)' }}>
+                          🍽️ Pièces fixes incluses
+                        </label>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {(pack.fixed_items || []).map((item, fi) => (
+                            <span key={fi} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full"
+                              style={{ background: 'rgba(196,140,140,0.12)', border: '1px solid rgba(196,140,140,0.3)', color: 'var(--adm-text)' }}>
+                              {item}
+                              <button type="button" className="ml-0.5 opacity-60 hover:opacity-100"
+                                onClick={() => setPacks(p => p.map((pk, j) => j === i
+                                  ? { ...pk, fixed_items: pk.fixed_items.filter((_, k) => k !== fi) }
+                                  : pk))}>
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={packItemInputs[i] || ''}
+                            onChange={e => setPackItemInputs(p => ({ ...p, [i]: e.target.value }))}
+                            onKeyDown={e => {
+                              if ((e.key === 'Enter' || e.key === ',') && (packItemInputs[i] || '').trim()) {
+                                e.preventDefault();
+                                const val = packItemInputs[i].trim().replace(/,$/, '');
+                                if (val && !(pack.fixed_items || []).includes(val)) {
+                                  setPacks(p => p.map((pk, j) => j === i
+                                    ? { ...pk, fixed_items: [...(pk.fixed_items || []), val] }
+                                    : pk));
+                                }
+                                setPackItemInputs(p => ({ ...p, [i]: '' }));
+                              }
+                            }}
+                            className="adm-input flex-1 text-xs"
+                            placeholder="Ex: Méchoui, Couscous... (Entrée pour ajouter)" />
+                          <button type="button"
+                            onClick={() => {
+                              const val = (packItemInputs[i] || '').trim();
+                              if (val && !(pack.fixed_items || []).includes(val)) {
+                                setPacks(p => p.map((pk, j) => j === i
+                                  ? { ...pk, fixed_items: [...(pk.fixed_items || []), val] }
+                                  : pk));
+                              }
+                              setPackItemInputs(p => ({ ...p, [i]: '' }));
+                            }}
+                            className="adm-btn-secondary text-xs px-3">
+                            + Ajouter
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={handleSavePacks} disabled={packsSaving}
+                    className="adm-btn-primary w-full mt-2 gap-2">
+                    {packsSaving && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-slow" />}
+                    Sauvegarder les packs
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+          {tab === 'options' && (
+            <div className="space-y-4">
+              {!activeProviderId ? (
+                <div className="rounded-xl p-6 text-center" style={{ background: 'var(--adm-surface2)', border: '1px dashed var(--adm-border)' }}>
+                  <Camera size={24} className="mx-auto mb-2" style={{ color: 'var(--adm-text2)' }} />
+                  <p className="text-sm" style={{ color: 'var(--adm-text2)' }}>Sauvegardez d'abord le prestataire pour configurer ses options.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Options list */}
+                  {optionsLoading ? (
+                    <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-14 skeleton-adm rounded-xl" />)}</div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--adm-text2)' }}>Options</p>
+                        <span className="text-xs" style={{ color: 'var(--adm-text2)' }}>{options.filter(o => o.is_active).length} actif / {options.length} total</span>
+                      </div>
+
+                      {options.length === 0 && !showAddOpt && (
+                        <div className="text-center py-8 rounded-xl" style={{ border: '1px dashed var(--adm-border)' }}>
+                          <Camera size={24} className="mx-auto mb-2" style={{ color: 'var(--adm-text2)' }} />
+                          <p className="text-sm" style={{ color: 'var(--adm-text2)' }}>Aucune option configurée</p>
+                        </div>
+                      )}
+
+                      <AnimatePresence>
+                        {options.map(opt => (
+                          <motion.div key={opt.id} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
+                            <OptionRow opt={opt} providerId={activeProviderId} onRefresh={loadOptions} onDelete={handleDeleteOpt} />
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+
+                      <AnimatePresence>
+                        {showAddOpt && (
+                          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                            className="rounded-xl p-4 space-y-3"
+                            style={{ background: 'rgba(217,165,165,0.05)', border: '1px dashed rgba(217,165,165,0.3)' }}>
+                            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#D9A5A5' }}>Nouvelle option</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="col-span-2">
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Nom *</label>
+                                <input value={addOptForm.name} onChange={e => setAddOptForm(f => ({ ...f, name: e.target.value }))}
+                                  className="adm-input w-full text-sm" placeholder="Ex: Drone, Mirror Booth, Girafe..." />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Prix (TND) *</label>
+                                <input type="number" value={addOptForm.price} onChange={e => setAddOptForm(f => ({ ...f, price: e.target.value }))}
+                                  className="adm-input w-full text-sm" min="0" step="10" placeholder="900" />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Catégorie</label>
+                                <select value={addOptForm.category} onChange={e => setAddOptForm(f => ({ ...f, category: e.target.value }))} className="adm-input w-full text-sm">
+                                  {OPT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                              </div>
+                              <div className="col-span-2">
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Description</label>
+                                <textarea value={addOptForm.description} onChange={e => setAddOptForm(f => ({ ...f, description: e.target.value }))}
+                                  className="adm-input w-full resize-none text-sm" rows={2} placeholder="Description optionnelle..." />
+                              </div>
+                              {addOptForm.category === 'Forfait' && (
+                                <div className="col-span-2">
+                                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Éléments inclus dans le forfait</label>
+                                  <div className="flex gap-2 mb-2">
+                                    <input value={addOptItemInput} onChange={e => setAddOptItemInput(e.target.value)}
+                                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const v = addOptItemInput.trim(); if (v) { setAddOptForm(f => ({ ...f, includes_items: [...f.includes_items, v] })); setAddOptItemInput(''); } }}}
+                                      className="adm-input flex-1 text-sm" placeholder="Ex: Séance 4h, Album photo... (Entrée pour ajouter)" />
+                                    <button type="button" onClick={() => { const v = addOptItemInput.trim(); if (v) { setAddOptForm(f => ({ ...f, includes_items: [...f.includes_items, v] })); setAddOptItemInput(''); }}}
+                                      className="adm-btn-primary text-xs px-3"><Plus size={13} /></button>
+                                  </div>
+                                  {addOptForm.includes_items.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {addOptForm.includes_items.map((item, i) => (
+                                        <span key={i} className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                                          style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)', color: '#34D399' }}>
+                                          {item}
+                                          <button type="button" onClick={() => setAddOptForm(f => ({ ...f, includes_items: f.includes_items.filter((_, j) => j !== i) }))}
+                                            className="ml-0.5 hover:text-red-400">✕</button>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div className="col-span-2">
+                                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--adm-text2)' }}>Photo</label>
+                                <ImagePicker value={addOptForm.image_url} onChange={url => setAddOptForm(f => ({ ...f, image_url: url }))} />
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer" style={{ color: 'var(--adm-text2)' }}>
+                              <input type="checkbox" checked={addOptForm.includes_standard}
+                                onChange={e => setAddOptForm(f => ({ ...f, includes_standard: e.target.checked }))}
+                                className="w-4 h-4 rounded accent-blue-400" />
+                              Forfait — inclut le frais de base
+                            </label>
+                            <div className="flex gap-2 justify-end">
+                              <button type="button" onClick={() => setShowAddOpt(false)} className="adm-btn-ghost text-sm px-4">Annuler</button>
+                              <button type="button" onClick={handleAddOpt} disabled={addOptSaving} className="adm-btn-primary text-sm gap-2 px-5">
+                                {addOptSaving ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin-slow" /> : <Plus size={14} />}
+                                Ajouter
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {!showAddOpt && (
+                        <button type="button" onClick={() => setShowAddOpt(true)}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
+                          style={{ border: '1px dashed rgba(217,165,165,0.35)', color: '#D9A5A5' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(217,165,165,0.05)'}
+                          onMouseLeave={e => e.currentTarget.style.background = ''}>
+                          <Plus size={14} /> Ajouter une option
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
         {/* Footer */}
         <div className="px-7 py-5 border-t flex gap-3 flex-shrink-0" style={{ borderColor: 'var(--adm-border)' }}>
@@ -366,7 +890,7 @@ export default function AdminProviders() {
                     </td>
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-1.5">
-                        <Link to={`/prestataires/${p.type_slug}/${p.slug}`} target="_blank"
+                        <Link to={p.type_slug ? `/prestataires/${p.type_slug}/${p.slug}` : '#'} target="_blank"
                           className="p-2 rounded-lg transition-all" style={{ color: 'var(--adm-text2)' }}
                           onMouseEnter={e => { e.currentTarget.style.background = 'var(--adm-bg)'; e.currentTarget.style.color = 'var(--adm-text)'; }}
                           onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--adm-text2)'; }}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Percent, Settings2, CreditCard } from 'lucide-react';
+import { Save, Percent, Settings2, CreditCard, Image, ToggleLeft, ToggleRight, Upload, X, Link2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -36,6 +36,8 @@ export default function AdminSettings() {
   const [loading, setLoading]     = useState(true);
   const [savingSettings, setSaving] = useState(false);
   const [savingType, setSavingType] = useState(null);
+  const [uploadingSlide, setUploadingSlide] = useState(null);
+  const fileRefs = useRef([null, null, null, null]);
 
   useEffect(() => {
     Promise.all([api.get('/settings'), api.get('/provider-types')])
@@ -54,6 +56,20 @@ export default function AdminSettings() {
       toast.success('Paramètres sauvegardés');
     } catch (_) { toast.error('Erreur sauvegarde'); }
     setSaving(false);
+  };
+
+  const uploadSlideImage = async (n, file) => {
+    if (!file) return;
+    setUploadingSlide(n);
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const url = res.data.url;
+      setSettings(s => ({ ...s, [`homepage_slide_${n}`]: url }));
+      toast.success(`Slide ${n} uploadée`);
+    } catch (_) { toast.error('Erreur upload'); }
+    setUploadingSlide(null);
   };
 
   const updateTypeDiscount = async (typeId, discount) => {
@@ -88,6 +104,7 @@ export default function AdminSettings() {
             { key: 'contact_email',              label: 'Email de contact',       type: 'email' },
             { key: 'contact_phone',              label: 'Téléphone',              type: 'tel' },
             { key: 'advance_payment_percentage', label: 'Acompte par défaut (%)', type: 'number' },
+            { key: 'whatsapp_number',            label: 'Numéro WhatsApp (ex: 21612345678)', type: 'tel' },
           ].map(({ key, label, type }) => (
             <Field key={key} label={label}>
               <input type={type} value={settings[key] || ''}
@@ -130,10 +147,129 @@ export default function AdminSettings() {
         </div>
       </SectionCard>
 
+      {/* Homepage slides */}
+      <SectionCard icon={Image} title="Photos du carrousel" subtitle="Les 4 photos de la page d'accueil — upload ou URL" delay={0.05}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {[1, 2, 3, 4].map((n, i) => {
+            const url = settings[`homepage_slide_${n}`] || '';
+            const isUploading = uploadingSlide === n;
+            const isLocal = url.startsWith('/uploads/');
+            return (
+              <div key={n} className="rounded-2xl overflow-hidden border" style={{ borderColor: 'var(--adm-border)', background: 'var(--adm-surface2)' }}>
+                {/* Preview */}
+                <div className="relative w-full h-36 bg-black/20 flex items-center justify-center overflow-hidden">
+                  {url ? (
+                    <>
+                      <img
+                        src={isLocal ? `${import.meta.env.VITE_API_URL || ''}${url}` : url}
+                        alt={`Slide ${n}`}
+                        className="w-full h-full object-cover"
+                        onError={e => { e.target.style.display = 'none'; }}
+                      />
+                      <button
+                        onClick={() => setSettings(s => ({ ...s, [`homepage_slide_${n}`]: '' }))}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white transition-all"
+                        style={{ background: 'rgba(0,0,0,0.5)' }}
+                        title="Supprimer">
+                        <X size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 opacity-40">
+                      <Image size={28} style={{ color: 'var(--adm-text2)' }} />
+                      <span className="text-xs font-display" style={{ color: 'var(--adm-text2)' }}>Slide {n}</span>
+                    </div>
+                  )}
+                  {isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
+                      <span className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin-slow" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Controls */}
+                <div className="p-3 space-y-2">
+                  {/* Upload button */}
+                  <input
+                    ref={el => fileRefs.current[i] = el}
+                    type="file" accept="image/*" className="hidden"
+                    onChange={e => { if (e.target.files[0]) uploadSlideImage(n, e.target.files[0]); e.target.value = ''; }}
+                  />
+                  <button
+                    onClick={() => fileRefs.current[i]?.click()}
+                    disabled={isUploading}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold font-display transition-all"
+                    style={{ background: 'rgba(217,165,165,0.1)', color: '#E8DCD5', border: '1px solid rgba(217,165,165,0.25)' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(217,165,165,0.18)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(217,165,165,0.1)'}>
+                    <Upload size={13} />
+                    {isUploading ? 'Envoi...' : 'Uploader une photo'}
+                  </button>
+
+                  {/* Or URL */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px" style={{ background: 'var(--adm-border)' }} />
+                    <span className="text-xs" style={{ color: 'var(--adm-text3, var(--adm-text2))' }}>ou URL</span>
+                    <div className="flex-1 h-px" style={{ background: 'var(--adm-border)' }} />
+                  </div>
+                  <div className="relative">
+                    <Link2 size={12} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--adm-text2)' }} />
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={e => setSettings(s => ({ ...s, [`homepage_slide_${n}`]: e.target.value }))}
+                      className="adm-input w-full text-xs pl-8"
+                      placeholder="https://images.unsplash.com/..."
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5">
+          <button onClick={saveSettings} disabled={savingSettings} className="adm-btn-primary gap-2">
+            {savingSettings
+              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-slow" />
+              : <Save size={14} />}
+            Sauvegarder
+          </button>
+        </div>
+      </SectionCard>
+
       {/* Discounts per type */}
       <SectionCard icon={Percent} title="Remises par catégorie"
-        subtitle="Cette remise est appliquée automatiquement aux devis générés" delay={0.1}>
-        <div className="space-y-3">
+        subtitle="Configurez et activez/désactivez les remises par catégorie de prestataire" delay={0.1}>
+
+        {/* Global toggle */}
+        <div className="flex items-center justify-between p-4 rounded-xl mb-4"
+          style={{ background: settings.category_discount_enabled === '1' ? 'rgba(52,211,153,0.06)' : 'var(--adm-surface2)',
+                   border: `1px solid ${settings.category_discount_enabled === '1' ? 'rgba(52,211,153,0.25)' : 'var(--adm-border)'}` }}>
+          <div>
+            <p className="text-sm font-semibold font-display" style={{ color: 'var(--adm-text)' }}>
+              Remises catégorie actives
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--adm-text2)' }}>
+              {settings.category_discount_enabled === '1'
+                ? 'Les remises ci-dessous sont appliquées sur les devis générés'
+                : 'Désactivé — aucune remise catégorie ne sera appliquée'}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const newVal = settings.category_discount_enabled === '1' ? '0' : '1';
+              setSettings(s => ({ ...s, category_discount_enabled: newVal }));
+            }}
+            style={{ color: settings.category_discount_enabled === '1' ? '#34D399' : 'var(--adm-text2)' }}>
+            {settings.category_discount_enabled === '1'
+              ? <ToggleRight size={36} />
+              : <ToggleLeft size={36} />
+            }
+          </button>
+        </div>
+
+        <div className="space-y-3" style={{ opacity: settings.category_discount_enabled === '1' ? 1 : 0.4, pointerEvents: settings.category_discount_enabled === '1' ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
           {types.map(type => (
             <div key={type.id} className="flex items-center gap-4 p-4 rounded-xl border transition-all"
               style={{ background: 'var(--adm-surface2)', borderColor: 'var(--adm-border)' }}
@@ -164,6 +300,15 @@ export default function AdminSettings() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-5">
+          <button onClick={saveSettings} disabled={savingSettings} className="adm-btn-primary gap-2">
+            {savingSettings
+              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin-slow" />
+              : <Save size={14} />}
+            Sauvegarder
+          </button>
         </div>
       </SectionCard>
     </div>

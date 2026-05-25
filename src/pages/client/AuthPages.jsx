@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Lock, Mail, User, Phone, ArrowRight, Zap } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, User, Phone, ArrowRight } from 'lucide-react';
+import useThemeStore from '../../store/themeStore';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import SEO from '../../components/common/SEO';
 import useAuthStore from '../../store/authStore';
+import useUiStore from '../../store/uiStore';
 
 const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, name, required, disabled }) => {
   const [show, setShow] = useState(false);
@@ -39,36 +41,42 @@ const AuthInput = ({ icon: Icon, type, placeholder, value, onChange, name, requi
   );
 };
 
-const AuthLayout = ({ children }) => (
-  <div className="min-h-screen flex items-center justify-center px-4 py-20 relative"
-    style={{ background: 'var(--bg)' }}>
-    {/* Ambient */}
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
-        style={{ background: 'radial-gradient(circle, rgba(225,29,72,0.12), transparent 65%)', filter: 'blur(60px)' }} />
-    </div>
-    <div className="relative w-full max-w-md">
-      <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}>
-        {children}
-      </motion.div>
-    </div>
-  </div>
-);
-
-const LogoBlock = () => (
-  <div className="text-center mb-8">
-    <Link to="/" className="inline-flex items-center gap-2.5 mb-2" aria-label="MyWedding">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg,#C48C8C,#D9A5A5)' }}>
-        <Zap size={18} className="text-white" fill="currentColor" />
+const AuthLayout = ({ children }) => {
+  const { promoVisible } = useUiStore();
+  const pt = 64 + (promoVisible ? 36 : 0) + 24;
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 pb-16 relative"
+      style={{ background: 'var(--bg)', paddingTop: pt }}>
+      {/* Ambient */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(225,29,72,0.12), transparent 65%)', filter: 'blur(60px)' }} />
       </div>
-      <span className="font-display font-bold text-2xl tracking-tight" style={{ color: 'var(--text)' }}>
-        My<span className="grad-primary">Wedding</span>
-      </span>
-    </Link>
-  </div>
-);
+      <div className="relative w-full max-w-md">
+        <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}>
+          {children}
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+const LogoBlock = () => {
+  const { dark } = useThemeStore();
+  return (
+    <div className="text-center mb-8">
+      <Link to="/" className="inline-flex mb-2" aria-label="MyWedding">
+        <img
+          src="/logo-dark.png"
+          alt="My Wedding"
+          className="h-16 w-auto object-contain"
+          style={{ filter: dark ? 'invert(1) brightness(2)' : 'brightness(0)' }}
+        />
+      </Link>
+    </div>
+  );
+};
 
 const Field = ({ label, children }) => (
   <div>
@@ -244,7 +252,7 @@ export function RegisterPage() {
             <AuthInput icon={Phone} type="tel" placeholder="+216 XX XXX XXX" name="phone"
               value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Mot de passe *">
               <AuthInput icon={Lock} type="password" placeholder="••••••" name="new-password"
                 value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required />

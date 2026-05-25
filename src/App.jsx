@@ -4,6 +4,8 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import ChatWidget from './components/common/ChatWidget';
+import SelectionBar from './components/common/SelectionBar';
+import ContactFAB from './components/common/ContactFAB';
 import useAuthStore from './store/authStore';
 import useThemeStore from './store/themeStore';
 
@@ -18,6 +20,10 @@ const PaymentSuccessPage = lazy(() => import('./pages/client/PaymentPages').then
 const PaymentFailedPage = lazy(() => import('./pages/client/PaymentPages').then(m => ({ default: m.PaymentFailedPage })));
 const MyQuotesPage = lazy(() => import('./pages/client/MyQuotesPage'));
 const ProfilePage  = lazy(() => import('./pages/client/ProfilePage'));
+const AboutPage = lazy(() => import('./pages/client/StaticPages').then(m => ({ default: m.AboutPage })));
+const CGUPage   = lazy(() => import('./pages/client/StaticPages').then(m => ({ default: m.CGUPage })));
+const MentionsPage = lazy(() => import('./pages/client/StaticPages').then(m => ({ default: m.MentionsPage })));
+const AdminReviews = lazy(() => import('./pages/admin/AdminReviews'));
 
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -26,6 +32,7 @@ const AdminQuotes = lazy(() => import('./pages/admin/AdminQuotes'));
 const AdminChat = lazy(() => import('./pages/admin/AdminChat'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminProviderTypes = lazy(() => import('./pages/admin/AdminProviderTypes'));
+const AdminQuoteRequests = lazy(() => import('./pages/admin/AdminQuoteRequests'));
 
 const ClientLayout = ({ children }) => (
   <div className="flex flex-col min-h-screen">
@@ -33,6 +40,8 @@ const ClientLayout = ({ children }) => (
     <main className="flex-1" id="main-content">{children}</main>
     <Footer />
     <ChatWidget />
+    <ContactFAB />
+    <SelectionBar />
   </div>
 );
 
@@ -108,13 +117,18 @@ function App() {
           <Route path="/payment/:quoteId" element={<ProtectedUser><ClientLayout><PaymentPage /></ClientLayout></ProtectedUser>} />
           <Route path="/payment/success" element={<ClientLayout><PaymentSuccessPage /></ClientLayout>} />
           <Route path="/payment/failed" element={<ClientLayout><PaymentFailedPage /></ClientLayout>} />
+          <Route path="/a-propos" element={<ClientLayout><AboutPage /></ClientLayout>} />
+          <Route path="/cgu" element={<ClientLayout><CGUPage /></ClientLayout>} />
+          <Route path="/mentions-legales" element={<ClientLayout><MentionsPage /></ClientLayout>} />
           <Route path="/admin" element={<ProtectedAdmin><AdminLayout /></ProtectedAdmin>}>
             <Route index element={<AdminDashboard />} />
             <Route path="prestataires" element={<AdminProviders />} />
             <Route path="categories" element={<AdminProviderTypes />} />
             <Route path="devis" element={<AdminQuotes />} />
+            <Route path="demandes" element={<AdminQuoteRequests />} />
             <Route path="chat" element={<AdminChat />} />
             <Route path="parametres" element={<AdminSettings />} />
+            <Route path="avis" element={<AdminReviews />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

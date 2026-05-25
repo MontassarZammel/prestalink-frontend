@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, FileText, MessageCircle, Settings, LogOut, Menu, X, ExternalLink, Bell, Tag, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, MessageCircle, Settings, LogOut, Menu, X, ExternalLink, Bell, Tag, Zap, Star } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 import { requestPermission, showNotification, playNotifSound } from '../../services/notifications';
@@ -11,7 +11,9 @@ const NAV_ITEMS = [
   { icon: Users,           label: 'Prestataires', to: '/admin/prestataires' },
   { icon: Tag,             label: 'Catégories',   to: '/admin/categories' },
   { icon: FileText,        label: 'Devis',        to: '/admin/devis' },
+  { icon: Zap,             label: 'Demandes',     to: '/admin/demandes' },
   { icon: MessageCircle,   label: 'Chat',         to: '/admin/chat',        badge: true },
+  { icon: Star,            label: 'Avis',         to: '/admin/avis' },
   { icon: Settings,        label: 'Paramètres',   to: '/admin/parametres' },
 ];
 
@@ -46,7 +48,7 @@ export default function AdminLayout() {
     return () => clearInterval(id);
   }, []);
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => { logout(); navigate('/login'); };
 
   const isActive = item =>
     item.exact
@@ -59,17 +61,14 @@ export default function AdminLayout() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--adm-border)' }}>
-        <Link to="/" className="flex items-center gap-2.5 group" aria-label="MyWedding">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #C48C8C, #D9A5A5)' }}>
-            <Zap size={14} className="text-white" fill="currentColor" />
-          </div>
-          <div>
-            <span className="font-display font-bold text-base" style={{ color: 'var(--adm-text)' }}>
-              My<span className="text-primary-400">Wedding</span>
-            </span>
-            <p className="text-xs" style={{ color: 'var(--adm-text2)', marginTop: -2 }}>Administration</p>
-          </div>
+        <Link to="/" className="flex items-center gap-3 group" aria-label="MyWedding">
+          <img
+            src="/logo-dark.png"
+            alt="My Wedding"
+            className="h-8 w-auto object-contain transition-opacity group-hover:opacity-80"
+            style={{ filter: 'invert(1) brightness(2)' }}
+          />
+          <p className="text-xs" style={{ color: 'var(--adm-text2)' }}>Administration</p>
         </Link>
       </div>
 

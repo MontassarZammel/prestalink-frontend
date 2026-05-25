@@ -6,6 +6,7 @@ import SEO from '../../components/common/SEO';
 import api from '../../services/api';
 import { getSocket } from '../../services/socket';
 import useAuthStore from '../../store/authStore';
+import useUiStore from '../../store/uiStore';
 
 const Field = ({ label, children }) => (
   <div>
@@ -15,6 +16,8 @@ const Field = ({ label, children }) => (
 );
 
 export default function ChatPage() {
+  const { promoVisible } = useUiStore();
+  const pt = 64 + (promoVisible ? 36 : 0) + 16;
   const { user, isAuthenticated }   = useAuthStore();
   const [step, setStep]             = useState('form');
   const [conversation, setConv]     = useState(null);
@@ -94,8 +97,8 @@ export default function ChatPage() {
     <>
       <SEO title="Chat Support" description="Contactez notre équipe via le chat en direct." />
 
-      <div className="min-h-screen pt-20 pb-10 px-4 flex items-center justify-center relative"
-        style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen pb-10 px-4 flex items-center justify-center relative"
+        style={{ background: 'var(--bg)', paddingTop: pt }}>
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full"
             style={{ background: 'radial-gradient(circle, rgba(217,165,165,0.1), transparent 65%)', filter: 'blur(60px)' }} />

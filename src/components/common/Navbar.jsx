@@ -1,22 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, FileText, ChevronDown, LogOut, LayoutDashboard, Zap, Grid3X3, Sun, Moon, User } from 'lucide-react';
+import { Menu, X, FileText, ChevronDown, LogOut, LayoutDashboard, Grid3X3, Sun, Moon, User, Aperture, CookingPot, Wand2, Mic2, Cherry, Hotel, Tag } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
+import useUiStore from '../../store/uiStore';
 import api from '../../services/api';
 
 const TYPE_ICONS = {
-  photographes: '📸', traiteurs: '🍽️', decorateurs: '💐',
-  animateurs: '🎵', fleuristes: '🌸', 'locations-salles': '🏛️',
+  photographes:       <Aperture   size={15} />,
+  traiteurs:          <CookingPot size={15} />,
+  decorateurs:        <Wand2      size={15} />,
+  animateurs:         <Mic2       size={15} />,
+  fleuristes:         <Cherry     size={15} />,
+  'locations-salles': <Hotel      size={15} />,
 };
 
 export default function Navbar() {
   const [scrolled, setScrolled]           = useState(false);
   const [mobileOpen, setMobileOpen]       = useState(false);
+  const { promoVisible, setPromoVisible } = useUiStore();
   const [userOpen, setUserOpen]           = useState(false);
   const [prestOpen, setPrestOpen]         = useState(false);
   const [types, setTypes]                 = useState([]);
+  const [newQuotes, setNewQuotes]         = useState(0);
   const { user, isAuthenticated, logout } = useAuthStore();
   const { dark, toggle } = useThemeStore();
   const location  = useLocation();
@@ -45,31 +52,88 @@ export default function Navbar() {
     api.get('/provider-types').then(r => setTypes(r.data.data || [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated) { setNewQuotes(0); return; }
+    const fetch = () => {
+      const since = localStorage.getItem('lastQuotesVisit') || '0';
+      api.get(`/quotes/my/new-count?since=${since}`)
+        .then(r => setNewQuotes(r.data.count || 0))
+        .catch(() => {});
+    };
+    fetch();
+    const id = setInterval(fetch, 30000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
+
+  // Clear badge when visiting Mes Devis
+  useEffect(() => {
+    if (location.pathname === '/mes-devis') setNewQuotes(0);
+  }, [location.pathname]);
+
   if (location.pathname.startsWith('/admin')) return null;
 
   const isPrestActive = location.pathname.startsWith('/prestataires');
 
   const navBg = scrolled ? 'backdrop-blur-xl border-b' : 'border-b border-transparent';
   const navStyle = scrolled
-    ? { background: 'rgba(250,250,247,0.95)', borderColor: 'rgba(217,165,165,0.1)' }
+    ? { background: dark ? 'rgba(13,9,9,0.95)' : 'rgba(250,250,247,0.95)', borderColor: 'rgba(217,165,165,0.1)' }
     : { background: 'transparent' };
+
+  const dismissPromo = () => {
+    localStorage.setItem('promo_dismissed', '1');
+    setPromoVisible(false);
+  };
+
+  const PROMO_H = promoVisible ? 36 : 0;
+  const HEADER_H = 64 + PROMO_H;
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${navBg}`}
       style={navStyle} role="banner">
 
+      {/* ── PROMO BAR ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {promoVisible && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+            style={{ background: 'linear-gradient(90deg, #b07a7a, #C48C8C, #D9A5A5, #C48C8C, #b07a7a)' }}>
+            <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3 py-2">
+              <div className="flex items-center gap-2 text-white text-xs font-semibold flex-1 justify-center">
+                <Tag size={11} className="opacity-90 flex-shrink-0" />
+                <span>
+                  <span className="font-bold">–15% de remise</span>
+                  {' '}sur votre prestation en réservant via MyWedding
+                </span>
+                <Link to="/a-propos"
+                  className="hidden sm:inline underline underline-offset-2 opacity-75 hover:opacity-100 transition-opacity">
+                  En savoir plus
+                </Link>
+              </div>
+              <button onClick={dismissPromo}
+                className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full transition-all text-white/60 hover:text-white hover:bg-white/15"
+                aria-label="Fermer">
+                <X size={12} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav className="max-w-7xl mx-auto px-5 lg:px-10 h-16 flex items-center justify-between gap-6"
         aria-label="Navigation principale">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group" aria-label="MyWedding">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all group-hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #C48C8C, #D9A5A5, #E8DCD5)', boxShadow: '0 2px 12px rgba(217,165,165,0.4)' }}>
-            <Zap size={14} style={{ color: 'var(--text)' }} fill="currentColor" />
-          </div>
-          <span className="font-display font-bold text-base leading-none" style={{ color: 'var(--text)' }}>
-            My<span className="grad-primary">Wedding</span>
-          </span>
+        <Link to="/" className="flex items-center flex-shrink-0 group" aria-label="MyWedding">
+          <img
+            src="/logo-dark.png"
+            alt="My Wedding"
+            className="h-10 w-auto object-contain transition-all duration-200 group-hover:opacity-80"
+            style={{ filter: dark ? 'invert(1) brightness(2)' : 'brightness(0)' }}
+          />
         </Link>
 
         {/* Desktop center — single Prestataires dropdown */}
@@ -97,7 +161,7 @@ export default function Navbar() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 6, scale: 0.97 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-0 mt-2 w-64 rounded-2xl shadow-dark-lg py-2 z-50"
+                  className="absolute left-0 mt-2 w-56 sm:w-64 rounded-2xl shadow-dark-lg py-2 z-50"
                   style={{ background: 'var(--s2)', border: '1px solid var(--border-2)' }}
                 >
                   <Link to="/prestataires"
@@ -119,12 +183,6 @@ export default function Navbar() {
                       onMouseLeave={e => { if (!location.pathname.includes(t.slug)) { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--text-2)'; }}}>
                       <span className="text-base leading-none">{TYPE_ICONS[t.slug] || '✦'}</span>
                       {t.name}
-                      {t.discount_percentage > 0 && (
-                        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: 'rgba(217,165,165,0.18)', color: '#C48C8C' }}>
-                          −{t.discount_percentage}%
-                        </span>
-                      )}
                     </Link>
                   ))}
                 </motion.div>
@@ -144,7 +202,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="relative" ref={userRef}>
               <button onClick={() => setUserOpen(v => !v)}
-                className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl transition-all"
+                className="relative flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-xl transition-all"
                 style={{ background: 'rgba(217,165,165,0.07)', border: '1px solid var(--border)' }}
                 aria-expanded={userOpen}>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
@@ -156,13 +214,19 @@ export default function Navbar() {
                 </span>
                 <ChevronDown size={11} style={{ color: 'var(--text-2)' }}
                   className={`transition-transform ${userOpen ? 'rotate-180' : ''}`} />
+                {newQuotes > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+                    style={{ background: '#EF4444' }}>
+                    {newQuotes > 9 ? '9+' : newQuotes}
+                  </span>
+                )}
               </button>
 
               <AnimatePresence>
                 {userOpen && (
                   <motion.div initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.97 }} transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-52 rounded-2xl shadow-dark-lg py-1.5 z-50"
+                    className="absolute right-0 mt-2 w-52 max-w-[calc(100vw-1rem)] rounded-2xl shadow-dark-lg py-1.5 z-50"
                     style={{ background: 'var(--s2)', border: '1px solid var(--border-2)' }}>
                     <div className="px-3 py-2.5 border-b mb-1" style={{ borderColor: 'var(--border)' }}>
                       <p className="text-xs font-bold font-display" style={{ color: 'var(--text)' }}>{user?.full_name}</p>
@@ -190,9 +254,15 @@ export default function Navbar() {
                       onMouseEnter={e => { e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.background = 'rgba(217,165,165,0.05)'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.background = ''; }}>
                       <FileText size={13} /> Mes Devis
+                      {newQuotes > 0 && (
+                        <span className="ml-auto px-1.5 py-0.5 rounded-full text-white text-[9px] font-bold leading-none"
+                          style={{ background: '#EF4444' }}>
+                          {newQuotes > 9 ? '9+' : newQuotes}
+                        </span>
+                      )}
                     </Link>
                     <div className="my-1 mx-2 h-px" style={{ background: 'var(--border)' }} />
-                    <button onClick={() => { logout(); navigate('/'); }}
+                    <button onClick={() => { logout(); navigate('/login'); }}
                       className="flex items-center gap-2.5 px-3 py-2 text-xs w-[calc(100%-8px)] mx-1 rounded-xl text-left transition-all font-display"
                       style={{ color: '#FDA4AF' }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(244,63,94,0.08)'}
@@ -286,8 +356,14 @@ export default function Navbar() {
                     </Link>
                     <Link to="/mes-devis" className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-xl font-display" style={{ color: 'var(--text-2)' }}>
                       <FileText size={15} /> Mes Devis
+                      {newQuotes > 0 && (
+                        <span className="ml-auto px-1.5 py-0.5 rounded-full text-white text-[9px] font-bold leading-none"
+                          style={{ background: '#EF4444' }}>
+                          {newQuotes > 9 ? '9+' : newQuotes}
+                        </span>
+                      )}
                     </Link>
-                    <button onClick={() => { logout(); navigate('/'); }}
+                    <button onClick={() => { logout(); navigate('/login'); }}
                       className="flex items-center gap-2 px-3 py-2.5 text-sm rounded-xl w-full text-left font-display"
                       style={{ color: '#FDA4AF' }}>
                       <LogOut size={15} /> Déconnexion

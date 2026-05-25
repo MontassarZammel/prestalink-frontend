@@ -6,8 +6,11 @@ import toast from 'react-hot-toast';
 import SEO from '../../components/common/SEO';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
+import useUiStore from '../../store/uiStore';
 
 export default function ProfilePage() {
+  const { promoVisible } = useUiStore();
+  const pt = 64 + (promoVisible ? 36 : 0) + 32;
   const { user, setUser } = useAuthStore();
   const [tab, setTab]           = useState('infos');
   const [loading, setLoading]   = useState(false);
@@ -67,7 +70,7 @@ export default function ProfilePage() {
   return (
     <>
       <SEO title="Mon profil — MyWedding" description="Gérez votre profil MyWedding" />
-      <div className="min-h-screen pt-24 pb-16 px-4" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen pb-16 px-4" style={{ background: 'var(--bg)', paddingTop: pt }}>
         <div className="max-w-3xl mx-auto">
 
           {/* Header card */}

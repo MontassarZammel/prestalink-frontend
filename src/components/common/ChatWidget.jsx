@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Zap, Minimize2, LogIn } from 'lucide-react';
+import { X, Send, Zap, Minimize2, LogIn } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import api from '../../services/api';
 import { getSocket } from '../../services/socket';
 import { requestPermission, showNotification, playNotifSound } from '../../services/notifications';
 import useAuthStore from '../../store/authStore';
+import useChatStore from '../../store/chatStore';
 import { useLocation } from 'react-router-dom';
 
 const getSessionId = () => {
@@ -16,7 +17,7 @@ const getSessionId = () => {
 };
 
 export default function ChatWidget() {
-  const [open, setOpen]         = useState(false);
+  const { open, setOpen, setUnread } = useChatStore();
   const [step, setStep]         = useState('form');
   const [conversation, setConv] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -24,14 +25,13 @@ export default function ChatWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [form, setForm]         = useState({ client_name: '', client_email: '', subject: '' });
-  const [unread, setUnread]     = useState(0);
 
   const { user, isAuthenticated } = useAuthStore();
-  const endRef         = useRef(null);
-  const typingTimeout  = useRef(null);
-  const prevUnread     = useRef(0);
-  const socket         = getSocket();
-  const location       = useLocation();
+  const endRef        = useRef(null);
+  const typingTimeout = useRef(null);
+  const prevUnread    = useRef(0);
+  const socket        = getSocket();
+  const location      = useLocation();
 
   if (location.pathname.startsWith('/admin')) return null;
 
@@ -43,13 +43,10 @@ export default function ChatWidget() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Logged-in user: skip form, go straight to chat
       setStep('chat');
-      // Try to load existing conversation (by client_id or session_id)
       api.get('/conversations').then(r => {
         if (r.data.data?.length > 0) openConv(r.data.data[0]);
       }).catch(() => {});
-      // Also check visitor session in case conversation was created before login
       api.get(`/conversations?session_id=${getSessionId()}`).then(r => {
         if (r.data.data?.length > 0) openConv(r.data.data[0]);
       }).catch(() => {});
@@ -80,7 +77,6 @@ export default function ChatWidget() {
       if (name !== (user?.full_name || 'Vous')) setIsTyping(t);
     };
     const onConnect = () => {
-      // Re-join room after reconnect
       setConv(prev => {
         if (prev) socket.emit('join_conversation', { conversationId: prev.id, sessionId: getSessionId() });
         return prev;
@@ -96,11 +92,10 @@ export default function ChatWidget() {
     };
   }, [socket, user, open]);
 
-  // Poll server for unread admin messages (reliable badge, works even when socket misses events)
   useEffect(() => {
     if (!isAuthenticated) return;
     const fetchUnread = () => {
-      if (open) return; // widget is open, no badge needed
+      if (open) return;
       api.get('/conversations/client-unread').then(r => {
         const count = r.data.count || 0;
         if (count > prevUnread.current) {
@@ -146,10 +141,7 @@ export default function ChatWidget() {
     const content = input.trim();
     const senderName = isAuthenticated ? user?.full_name : form.client_name;
     const senderRole = isAuthenticated ? (user?.role || 'client') : 'visitor';
-
     let conv = conversation;
-
-    // Create conversation automatically if none exists (authenticated user)
     if (!conv && isAuthenticated) {
       try {
         const res = await api.post('/conversations', {
@@ -163,9 +155,7 @@ export default function ChatWidget() {
         socket.emit('join_conversation', { conversationId: conv.id, sessionId: getSessionId() });
       } catch (_) { return; }
     }
-
     if (!conv) return;
-
     const optimistic = {
       id: `tmp_${Date.now()}`,
       conversation_id: conv.id,
@@ -176,12 +166,7 @@ export default function ChatWidget() {
       created_at: new Date().toISOString(),
     };
     setMessages(prev => [...prev, optimistic]);
-    socket.emit('send_message', {
-      conversationId: conv.id,
-      content,
-      senderName,
-      senderRole,
-    });
+    socket.emit('send_message', { conversationId: conv.id, content, senderName, senderRole });
     setInput('');
   };
 
@@ -195,7 +180,7 @@ export default function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[500] flex flex-col items-end gap-3">
+    <div className="fixed bottom-24 right-6 z-[500] flex flex-col items-end">
       <AnimatePresence>
         {open && (
           <motion.div
@@ -238,25 +223,20 @@ export default function ChatWidget() {
                     style={{ background: 'rgba(217,165,165,0.1)', border: '1px solid rgba(217,165,165,0.2)' }}>
                     <LogIn size={24} style={{ color: '#E8DCD5' }} />
                   </div>
-                  <p className="font-display font-bold text-base mb-2" style={{ color: 'var(--text)' }}>
-                    Connexion requise
-                  </p>
+                  <p className="font-display font-bold text-base mb-2" style={{ color: 'var(--text)' }}>Connexion requise</p>
                   <p className="text-xs leading-relaxed mb-6" style={{ color: 'var(--text-2)' }}>
                     Connectez-vous à votre compte pour discuter avec notre équipe support.
                   </p>
-                  <Link to="/login" onClick={() => setOpen(false)}
-                    className="btn btn-primary w-full gap-2">
+                  <Link to="/login" onClick={() => setOpen(false)} className="btn btn-primary w-full gap-2">
                     <LogIn size={14} /> Se connecter
                   </Link>
-                  <Link to="/register" onClick={() => setOpen(false)}
-                    className="btn btn-outline w-full gap-2 mt-2 text-xs">
+                  <Link to="/register" onClick={() => setOpen(false)} className="btn btn-outline w-full gap-2 mt-2 text-xs">
                     Créer un compte
                   </Link>
                 </motion.div>
               ) : (
                 <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="flex-1 flex flex-col min-h-0">
-                  {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3 scroll-thin">
                     {messages.length === 0 && (
                       <div className="text-center py-8 px-4">
@@ -311,8 +291,6 @@ export default function ChatWidget() {
                     )}
                     <div ref={endRef} />
                   </div>
-
-                  {/* Input */}
                   <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
                     <div className="flex gap-2 items-end">
                       <textarea value={input} onChange={e => handleTyping(e.target.value)}
@@ -333,38 +311,6 @@ export default function ChatWidget() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Trigger button */}
-      <motion.button
-        onClick={() => setOpen(v => !v)}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.94 }}
-        className="relative w-14 h-14 rounded-2xl flex items-center justify-center shadow-dark-lg transition-all"
-        style={{
-          background: open ? 'var(--s3)' : 'linear-gradient(135deg, #C48C8C, #D9A5A5)',
-          border: '1px solid var(--border-2)',
-          boxShadow: open ? undefined : '0 8px 32px rgba(217,165,165,0.45)',
-        }}
-        aria-label={open ? 'Fermer le chat' : 'Ouvrir le chat'}>
-        <AnimatePresence mode="wait">
-          {open ? (
-            <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
-              <X size={20} style={{ color: 'var(--text-2)' }} />
-            </motion.span>
-          ) : (
-            <motion.span key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
-              <MessageCircle size={22} style={{ color: 'var(--text)' }} />
-            </motion.span>
-          )}
-        </AnimatePresence>
-        {unread > 0 && !open && (
-          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-            style={{ background: '#10B981' }}>
-            {unread}
-          </motion.span>
-        )}
-      </motion.button>
     </div>
   );
 }

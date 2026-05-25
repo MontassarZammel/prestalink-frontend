@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Download, CreditCard, Clock, CheckCircle, XCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import { FileText, Download, CreditCard, Clock, CheckCircle, XCircle, AlertCircle, ArrowRight, ClipboardList, Star } from 'lucide-react';
+import toast from 'react-hot-toast';
 import SEO from '../../components/common/SEO';
 import api from '../../services/api';
+import EventBriefModal from '../../components/client/EventBriefModal';
+import useUiStore from '../../store/uiStore';
 
 const STATUS_CONFIG = {
   draft:    { label: 'Brouillon',  Icon: Clock,         cls: 'badge badge-gray' },
@@ -14,10 +17,17 @@ const STATUS_CONFIG = {
 };
 
 export default function MyQuotesPage() {
+  const { promoVisible } = useUiStore();
+  const pt = 64 + (promoVisible ? 36 : 0) + 32;
   const [quotes, setQuotes]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [briefQuote, setBriefQuote] = useState(null);
+  const [reviewQuote, setReviewQuote] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   useEffect(() => {
+    localStorage.setItem('lastQuotesVisit', String(Date.now()));
     api.get('/quotes/my')
       .then(r => { setQuotes(r.data.data || []); setLoading(false); })
       .catch(() => setLoading(false));
@@ -27,7 +37,7 @@ export default function MyQuotesPage() {
     <>
       <SEO title="Mes Devis" description="Consultez et gérez vos devis sur MyWedding" />
 
-      <div className="min-h-screen pt-24 pb-20 px-4 sm:px-6 relative" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen pb-20 px-4 sm:px-6 relative" style={{ background: 'var(--bg)', paddingTop: pt }}>
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.1), transparent 65%)', filter: 'blur(60px)' }} />
 
@@ -117,6 +127,32 @@ export default function MyQuotesPage() {
 
                         <p className="text-sm leading-relaxed mb-5 line-clamp-2" style={{ color: 'var(--text-2)' }}>{quote.description}</p>
 
+                        {/* Avis prompt — visible pour tout devis envoyé ou accepté */}
+                        {(quote.status === 'sent' || quote.status === 'accepted' || quote.payment_status === 'partial' || quote.payment_status === 'paid') && (
+                          <div className="flex items-center justify-between gap-4 rounded-xl px-4 py-3 mb-4"
+                            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.18)' }}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ background: 'rgba(245,158,11,0.12)' }}>
+                                <Star size={14} style={{ color: '#F59E0B' }} fill="#F59E0B" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold font-display" style={{ color: 'var(--text)' }}>
+                                  Votre avis sur {quote.provider_name}
+                                </p>
+                                <p className="text-xs" style={{ color: 'var(--text-2)' }}>
+                                  Partagez votre expérience pour aider les autres couples
+                                </p>
+                              </div>
+                            </div>
+                            <button onClick={() => { setReviewQuote(quote); setReviewForm({ rating: 5, comment: '' }); }}
+                              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                              style={{ background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)' }}>
+                              <Star size={12} /> Donner mon avis
+                            </button>
+                          </div>
+                        )}
+
                         {/* Footer */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4"
                           style={{ borderTop: '1px solid var(--border)' }}>
@@ -135,6 +171,13 @@ export default function MyQuotesPage() {
                                 <CreditCard size={13} /> Payer l'acompte
                               </Link>
                             )}
+                            {(quote.payment_status === 'partial' || quote.payment_status === 'paid') && (
+                              <button onClick={() => setBriefQuote(quote)}
+                                className="btn btn-outline btn-sm gap-1.5"
+                                style={{ borderColor: 'rgba(217,165,165,0.35)', color: '#D9A5A5' }}>
+                                <ClipboardList size={13} /> Ordre de mission
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -146,6 +189,80 @@ export default function MyQuotesPage() {
           </motion.div>
         </div>
       </div>
+
+      {briefQuote && (
+        <EventBriefModal
+          quoteId={briefQuote.id}
+          quoteName={briefQuote.provider_name || briefQuote.description}
+          onClose={() => setBriefQuote(null)}
+        />
+      )}
+
+      {reviewQuote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 backdrop-blur-sm bg-black/60" onClick={() => setReviewQuote(null)} />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+            className="relative w-full max-w-md rounded-2xl p-6 shadow-xl"
+            style={{ background: 'var(--s2)', border: '1px solid var(--border-2)' }}>
+            <button onClick={() => setReviewQuote(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+              style={{ color: 'var(--text-3)' }}>
+              <XCircle size={18} />
+            </button>
+            <h2 className="font-display text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Laissez un avis</h2>
+            <p className="text-sm mb-5" style={{ color: 'var(--text-2)' }}>{reviewQuote.provider_name || reviewQuote.description}</p>
+
+            {/* Star picker */}
+            <div className="flex gap-2 mb-5">
+              {[1,2,3,4,5].map(n => (
+                <button key={n} onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
+                  className="transition-transform hover:scale-110">
+                  <Star size={28} fill={n <= reviewForm.rating ? '#F59E0B' : 'none'}
+                    stroke={n <= reviewForm.rating ? '#F59E0B' : 'rgba(255,255,255,0.3)'} />
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              rows={4}
+              placeholder="Partagez votre expérience... (optionnel)"
+              value={reviewForm.comment}
+              onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+              className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none transition-all mb-5"
+              style={{ background: 'var(--s3)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+
+            <div className="flex gap-3">
+              <button onClick={() => setReviewQuote(null)}
+                className="flex-1 btn btn-outline">
+                Annuler
+              </button>
+              <button disabled={reviewLoading}
+                onClick={async () => {
+                  setReviewLoading(true);
+                  try {
+                    await api.post(`/providers/${reviewQuote.provider_id}/reviews`, {
+                      rating: reviewForm.rating,
+                      comment: reviewForm.comment,
+                      quote_id: reviewQuote.id,
+                    });
+                    toast.success('Avis soumis ! Il sera publié après modération.');
+                    setReviewQuote(null);
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || 'Erreur lors de la soumission');
+                  } finally {
+                    setReviewLoading(false);
+                  }
+                }}
+                className="flex-1 btn btn-primary gap-2">
+                {reviewLoading
+                  ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <><Star size={14} /> Soumettre</>}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 }

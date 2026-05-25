@@ -1,50 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Star, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Star, ChevronLeft, ChevronRight, Sparkles, Camera, UtensilsCrossed, Music2, Flower2, Building2 } from 'lucide-react';
 import SEO from '../../components/common/SEO';
 import api from '../../services/api';
+import useUiStore from '../../store/uiStore';
+import useThemeStore from '../../store/themeStore';
 
-const EMOJI_MAP = {
-  photographes: '📸', traiteurs: '🍽️', decorateurs: '💐',
-  animateurs: '🎵', fleuristes: '🌸', 'locations-salles': '🏛️',
+const TYPE_ICONS = {
+  photographes:       { icon: Camera,          color: '#C48C8C', bg: 'rgba(196,140,140,0.12)' },
+  traiteurs:          { icon: UtensilsCrossed,  color: '#C4A87A', bg: 'rgba(196,168,122,0.12)' },
+  decorateurs:        { icon: Sparkles,         color: '#A87AC4', bg: 'rgba(168,122,196,0.12)' },
+  animateurs:         { icon: Music2,           color: '#7AAEC4', bg: 'rgba(122,174,196,0.12)' },
+  fleuristes:         { icon: Flower2,          color: '#7AC48C', bg: 'rgba(122,196,140,0.12)' },
+  'locations-salles': { icon: Building2,        color: '#C4B07A', bg: 'rgba(196,176,122,0.12)' },
 };
 
-const SLIDES = [
-  {
-    photo: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1920&q=85&auto=format&fit=crop',
-    tag: 'Mariages & Fiançailles',
-    title: 'Votre mariage\nde rêve',
-    cta: 'Voir les prestataires',
-    to: '/prestataires',
-  },
-  {
-    photo: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=85&auto=format&fit=crop',
-    tag: 'Décoration & Fleurs',
-    title: 'Un décor\nà couper\nle souffle',
-    cta: 'Décorateurs & Fleuristes',
-    to: '/prestataires/decorateurs',
-  },
-  {
-    photo: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=1920&q=85&auto=format&fit=crop',
-    tag: 'Gastronomie & Traiteurs',
-    title: 'Des saveurs\ninoubliables',
-    cta: 'Voir les traiteurs',
-    to: '/prestataires/traiteurs',
-  },
-  {
-    photo: 'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=1920&q=85&auto=format&fit=crop',
-    tag: 'Photographie',
-    title: 'Immortalisez\nchaque instant',
-    cta: 'Voir les photographes',
-    to: '/prestataires/photographes',
-  },
+const DEFAULT_SLIDES = [
+  { tag: 'Mariages & Fiançailles', title: 'Votre mariage\nde rêve',         cta: 'Voir les prestataires',      to: '/prestataires' },
+  { tag: 'Décoration & Fleurs',    title: 'Un décor\nà couper\nle souffle', cta: 'Décorateurs & Fleuristes',   to: '/prestataires/decorateurs' },
+  { tag: 'Gastronomie & Traiteurs',title: 'Des saveurs\ninoubliables',       cta: 'Voir les traiteurs',         to: '/prestataires/traiteurs' },
+  { tag: 'Photographie',           title: 'Immortalisez\nchaque instant',   cta: 'Voir les photographes',      to: '/prestataires/photographes' },
 ];
 
 const TESTIMONIALS = [
-  { text: 'Notre mariage était parfait. Tous nos prestataires trouvés sur une seule plateforme, un gain de temps incroyable.', name: 'Yasmine & Karim', event: 'Mariage · Tunis', initials: 'YK', stars: 5 },
-  { text: 'La remise exclusive nous a fait économiser 3 500 TND. Impossible de trouver ces prix ailleurs.', name: 'Sofia & Mehdi', event: 'Mariage · Sousse', initials: 'SM', stars: 5 },
-  { text: 'Photographe, traiteur, DJ — tout sélectionné depuis un seul endroit. Incroyable.', name: 'Nadia & Amine', event: 'Mariage · Sfax', initials: 'NA', stars: 5 },
+  { text: 'On a trouvé notre photographe, traiteur et décorateur en quelques heures. Le devis était prêt le lendemain, clair et détaillé. MyWedding nous a économisé des semaines de stress.', name: 'Yasmine & Karim', event: 'Mariage · Tunis', initials: 'YK', stars: 5 },
+  { text: 'Grâce à la remise de 15%, on a économisé plus de 3 200 TND sur notre traiteur. Des prix qu\'on ne retrouve nulle part ailleurs, et un service impeccable du début à la fin.', name: 'Sofia & Mehdi', event: 'Mariage · Sousse', initials: 'SM', stars: 5 },
+  { text: 'Le chat avec le support nous a aidé à composer notre sélection parfaite. Chaque prestataire était professionnel, ponctuel, et au-dessus de nos attentes. Merci MyWedding !', name: 'Nadia & Amine', event: 'Mariage · Sfax', initials: 'NA', stars: 5 },
+  { text: 'Simple, rapide, transparent. Le devis PDF était tellement professionnel qu\'on l\'a montré fièrement à toute la famille. Je recommande à 100% pour n\'importe quel événement.', name: 'Lina & Sami', event: 'Mariage · Nabeul', initials: 'LS', stars: 5 },
+  { text: 'Notre DJ et notre fleuriste sont venus des recommandations MyWedding. Les deux étaient exceptionnels. On a eu le mariage de nos rêves pour un budget maîtrisé.', name: 'Rania & Tarek', event: 'Mariage · Monastir', initials: 'RT', stars: 5 },
 ];
 
 const IV = ({ children, delay = 0, className = '' }) => (
@@ -56,17 +40,29 @@ const IV = ({ children, delay = 0, className = '' }) => (
 
 /* ── CAROUSEL ──────────────────────────────────────────────────── */
 function HeroCarousel() {
+  const { dark } = useThemeStore();
   const [idx, setIdx]       = useState(0);
   const [paused, setPaused] = useState(false);
+  const [slides, setSlides] = useState(DEFAULT_SLIDES.map((s, i) => ({ ...s, photo: '' })));
+
+  useEffect(() => {
+    api.get('/settings').then(r => {
+      const d = r.data.data || {};
+      setSlides(DEFAULT_SLIDES.map((s, i) => ({
+        ...s,
+        photo: d[`homepage_slide_${i + 1}`] || '',
+      })));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setIdx(i => (i + 1) % SLIDES.length), 5500);
+    const t = setInterval(() => setIdx(i => (i + 1) % slides.length), 5500);
     return () => clearInterval(t);
   }, [paused]);
 
-  const prev = useCallback(() => setIdx(i => (i - 1 + SLIDES.length) % SLIDES.length), []);
-  const next = useCallback(() => setIdx(i => (i + 1) % SLIDES.length), []);
+  const prev = useCallback(() => setIdx(i => (i - 1 + slides.length) % slides.length), [slides.length]);
+  const next = useCallback(() => setIdx(i => (i + 1) % slides.length), [slides.length]);
 
   return (
     <section
@@ -79,8 +75,8 @@ function HeroCarousel() {
       <AnimatePresence mode="sync">
         <motion.img
           key={idx}
-          src={SLIDES[idx].photo}
-          alt={SLIDES[idx].tag}
+          src={slides[idx].photo}
+          alt={slides[idx].tag}
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0 }}
@@ -92,6 +88,18 @@ function HeroCarousel() {
 
       {/* Dark gradient overlay */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,18,8,0.55) 0%, rgba(26,18,8,0.15) 50%, rgba(26,18,8,0.05) 100%)', zIndex: 1 }} />
+
+      {/* Logo foreground */}
+      <div className="absolute top-5 right-6 sm:top-8 sm:right-10 z-10">
+        <Link to="/" aria-label="MyWedding">
+          <img
+            src="/logo-dark.png"
+            alt="My Wedding"
+            className="h-20 sm:h-32 w-auto object-contain drop-shadow-xl"
+            style={{ filter: 'invert(1) brightness(2)', opacity: 0.95 }}
+          />
+        </Link>
+      </div>
 
       {/* Bottom-left text */}
       <div className="absolute bottom-0 left-0 right-0 z-10 px-5 sm:px-14 pb-16 sm:pb-24">
@@ -105,20 +113,20 @@ function HeroCarousel() {
           >
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-5"
               style={{ background: 'rgba(217,165,165,0.22)', border: '1px solid rgba(217,165,165,0.4)', color: '#E8DCD5', backdropFilter: 'blur(8px)' }}>
-              <Sparkles size={9} /> {SLIDES[idx].tag}
+              <Sparkles size={9} /> {slides[idx].tag}
             </div>
 
             <h1 className="font-display font-extrabold text-white mb-7"
               style={{ fontSize: 'clamp(2.8rem, 6vw, 5.5rem)', letterSpacing: '-0.04em', lineHeight: '0.92', whiteSpace: 'pre-line', textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}>
-              {SLIDES[idx].title}
+              {slides[idx].title}
             </h1>
 
-            <Link to={SLIDES[idx].to}
+            <Link to={slides[idx].to}
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-display font-bold text-sm transition-all"
               style={{ background: 'rgba(217,165,165,0.85)', color: "var(--text)", border: '1px solid rgba(217,165,165,0.5)', backdropFilter: 'blur(8px)', boxShadow: '0 4px 20px rgba(217,165,165,0.35)' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 6px 28px rgba(217,165,165,0.55)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217,165,165,0.85)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(217,165,165,0.35)'; }}>
-              {SLIDES[idx].cta} <ArrowRight size={15} />
+              {slides[idx].cta} <ArrowRight size={15} />
             </Link>
           </motion.div>
         </AnimatePresence>
@@ -140,7 +148,7 @@ function HeroCarousel() {
 
       {/* Dots */}
       <div className="absolute bottom-8 right-8 sm:right-14 z-10 flex items-center gap-2">
-        {SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button key={i} onClick={() => setIdx(i)}
             className="transition-all rounded-full"
             style={{ width: i === idx ? '28px' : '8px', height: '8px', background: i === idx ? '#D9A5A5' : 'rgba(217,165,165,0.3)' }}
@@ -153,6 +161,8 @@ function HeroCarousel() {
 
 /* ── MAIN ──────────────────────────────────────────────────────── */
 export default function HomePage() {
+  const { promoVisible } = useUiStore();
+  const HEADER_H = 64 + (promoVisible ? 36 : 0);
   const [types, setTypes] = useState([]);
 
   useEffect(() => {
@@ -164,7 +174,7 @@ export default function HomePage() {
       <SEO title={null} description="Les meilleurs prestataires événementiels de Tunisie — photographes, traiteurs, décorateurs." />
 
       {/* ── CAROUSEL ─────────────────────────────────────────── */}
-      <div className="px-4 sm:px-8" style={{ paddingTop: '90px' }}>
+      <div className="px-4 sm:px-8" style={{ paddingTop: HEADER_H + 26 }}>
         <HeroCarousel />
       </div>
 
@@ -188,11 +198,18 @@ export default function HomePage() {
                     style={{ background: 'rgba(217,165,165,0.03)', border: '1px solid var(--border)' }}
                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(217,165,165,0.07)'; e.currentTarget.style.borderColor = 'rgba(217,165,165,0.3)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217,165,165,0.03)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = ''; }}>
-                    <div className="text-4xl mb-4">{EMOJI_MAP[t.slug] || '✦'}</div>
+                    {(() => {
+                      const cfg = TYPE_ICONS[t.slug];
+                      const Icon = cfg?.icon || Sparkles;
+                      return (
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                          style={{ background: cfg?.bg || 'rgba(217,165,165,0.1)', border: `1px solid ${cfg?.color || '#D9A5A5'}22` }}>
+                          <Icon size={22} style={{ color: cfg?.color || '#D9A5A5' }} />
+                        </div>
+                      );
+                    })()}
                     <h3 className="font-display font-bold text-sm mb-2" style={{ color: 'var(--text)' }}>{t.name}</h3>
-                    {t.discount_percentage > 0 && (
-                      <span className="badge badge-gold">−{t.discount_percentage}% remise</span>
-                    )}
+                    <span className="badge badge-gold">−15% remise</span>
                     <div className="flex items-center gap-1 mt-3 text-xs opacity-0 group-hover:opacity-100 transition-opacity font-display" style={{ color: 'var(--primary-lt)' }}>
                       Voir les profils <ChevronRight size={10} />
                     </div>
@@ -211,6 +228,40 @@ export default function HomePage() {
               Tous les prestataires <ArrowRight size={14} />
             </Link>
           </IV>
+        </div>
+      </section>
+
+      {/* ── PROMO BANNER ─────────────────────────────────────── */}
+      <section className="px-6 py-10" style={{ background: 'var(--bg)' }}>
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="relative overflow-hidden rounded-3xl px-5 sm:px-8 py-7 sm:py-10 flex flex-col sm:flex-row items-center gap-5 sm:gap-6"
+            style={{ background: 'linear-gradient(135deg, #b07a7a 0%, #C48C8C 40%, #D9A5A5 100%)' }}>
+            {/* Dot pattern */}
+            <div className="absolute inset-0 opacity-[0.07] pointer-events-none"
+              style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
+            {/* Big % */}
+            <div className="flex-shrink-0 flex items-end gap-1 leading-none select-none">
+              <span className="font-display font-black text-white/20 text-[52px] sm:text-[80px] md:text-[100px] leading-none">–15</span>
+              <span className="font-display font-black text-white/20 text-4xl sm:text-5xl md:text-6xl leading-none mb-2">%</span>
+            </div>
+            <div className="relative text-center sm:text-left">
+              <p className="font-display font-black text-white text-2xl sm:text-3xl leading-tight mb-2">
+                Réservez via MyWedding,<br className="hidden sm:block" /> économisez 15%
+              </p>
+              <p className="text-white/80 text-sm sm:text-base leading-relaxed max-w-md">
+                En passant votre réservation sur notre plateforme, vous bénéficiez d'une remise exclusive de <strong>15%</strong> sur le tarif de votre prestataire. Une offre unique pour un mariage parfait.
+              </p>
+              <Link to="/prestataires"
+                className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 rounded-xl text-sm font-bold transition-all"
+                style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}>
+                Trouver mon prestataire <ArrowRight size={14} />
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -237,12 +288,12 @@ export default function HomePage() {
                 desc: 'Chaque profil est validé par notre équipe avant d\'être publié sur la plateforme.',
               },
               {
-                icon: '🎯',
+                icon: '🏷️',
                 color: '#E8DCD5',
                 bg: 'rgba(217,165,165,0.08)',
                 bd: 'rgba(217,165,165,0.2)',
-                title: 'Remises exclusives',
-                desc: 'Des tarifs négociés sur chaque catégorie, uniquement disponibles sur MyWedding.',
+                title: '–15% sur votre prestation',
+                desc: 'En réservant via MyWedding, bénéficiez d\'une remise de 15% sur le tarif de votre prestataire — exclusivité plateforme.',
               },
               {
                 icon: '💬',
@@ -310,7 +361,7 @@ export default function HomePage() {
           </IV>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {TESTIMONIALS.slice(1).map((t, i) => (
+            {TESTIMONIALS.slice(1, 5).map((t, i) => (
               <IV key={i} delay={i * 0.1}>
                 <div className="p-7 rounded-2xl h-full"
                   style={{ background: 'rgba(217,165,165,0.04)', border: '1px solid var(--border)' }}>
@@ -341,7 +392,7 @@ export default function HomePage() {
       <section className="py-24 px-6" style={{ background: 'var(--bg)' }}>
         <div className="max-w-4xl mx-auto">
           <IV>
-            <div className="relative overflow-hidden rounded-3xl p-8 sm:p-14 text-center"
+            <div className="relative overflow-hidden rounded-3xl p-6 sm:p-10 lg:p-14 text-center"
               style={{ background: 'linear-gradient(135deg, #5A3A00 0%, #C48C8C 40%, #D9A5A5 70%, #F0D888 100%)' }}>
               <div className="absolute inset-0 pointer-events-none opacity-[0.06]"
                 style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />

@@ -1,22 +1,23 @@
 import { Link } from 'react-router-dom';
-import { Zap, Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
+import { Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
+import useThemeStore from '../../store/themeStore';
 
 export default function Footer() {
+  const { dark } = useThemeStore();
   return (
     <footer style={{ background: 'var(--s1)', borderTop: '1px solid var(--border)' }} role="contentinfo">
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10 mb-12">
 
           {/* Brand */}
           <div>
-            <Link to="/" className="inline-flex items-center gap-2.5 mb-5" aria-label="MyWedding">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg,#C48C8C,#D9A5A5)', boxShadow: '0 2px 10px rgba(217,165,165,0.35)' }}>
-                <Zap size={14} style={{ color: 'var(--text)' }} fill="currentColor" />
-              </div>
-              <span className="font-display font-bold text-lg tracking-tight" style={{ color: 'var(--text)' }}>
-                My<span className="grad-primary">Wedding</span>
-              </span>
+            <Link to="/" className="inline-flex mb-5" aria-label="MyWedding">
+              <img
+                src="/logo-dark.png"
+                alt="My Wedding"
+                className="h-10 w-auto object-contain"
+                style={{ filter: dark ? 'invert(1) brightness(2)' : 'brightness(0)' }}
+              />
             </Link>
             <p className="text-sm leading-relaxed max-w-[220px]" style={{ color: 'var(--text-2)' }}>
               La plateforme de référence pour vos prestataires événementiels en Tunisie.
@@ -66,6 +67,7 @@ export default function Footer() {
                 ['Tous les prestataires', '/prestataires'],
                 ['Chat Support', '/chat'],
                 ['Mes Devis', '/mes-devis'],
+                ['À propos', '/a-propos'],
                 ['Connexion', '/login'],
               ].map(([label, to]) => (
                 <li key={to}>
@@ -123,7 +125,7 @@ export default function Footer() {
             © {new Date().getFullYear()} MyWedding — Tous droits réservés
           </p>
           <div className="flex gap-5">
-            {[['CGU', '/cgu'], ['Confidentialité', '/confidentialite']].map(([label, to]) => (
+            {[['À propos', '/a-propos'], ['CGU', '/cgu'], ['Mentions légales', '/mentions-legales']].map(([label, to]) => (
               <Link key={to} to={to}
                 className="text-xs transition-colors"
                 style={{ color: 'var(--text-3)' }}

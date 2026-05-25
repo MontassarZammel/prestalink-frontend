@@ -49,7 +49,7 @@
   --border-2:    rgba(217,165,165,0.22);
   --text:        #F5E8E8;
   --text-2:      #C89090;
-  --text-3:      #7A5050;
+  --text-3:      #A87878;
 }
 
 [data-theme="dark"] .input,
@@ -296,7 +296,7 @@
     user-select: none;
   }
   .pill:hover  { border-color: var(--primary); color: var(--primary-dk); background: rgba(217,165,165,0.05); }
-  .pill.active { background: var(--primary); border-color: var(--primary); color: #1A0E0E; font-weight: 700; box-shadow: 0 2px 12px rgba(217,165,165,0.4); }
+  .pill.active { background: #C48C8C; border-color: #C48C8C; color: #fff; font-weight: 700; box-shadow: 0 2px 12px rgba(196,140,140,0.35); }
 
   /* GRADIENT TEXT */
   .grad-primary {

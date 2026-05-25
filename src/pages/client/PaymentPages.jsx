@@ -1,33 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Shield, ArrowRight, CheckCircle, XCircle, Zap, Lock } from 'lucide-react';
+import { CreditCard, Shield, ArrowRight, CheckCircle, XCircle, Zap, Lock, FileText } from 'lucide-react';
+import EventBriefModal from '../../components/client/EventBriefModal';
 import toast from 'react-hot-toast';
 import SEO from '../../components/common/SEO';
 import api from '../../services/api';
+import useUiStore from '../../store/uiStore';
 
 const IS_DEV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
 const GATEWAY_INFO = {
-  konnect: {
-    name: 'Konnect',
-    desc: 'Carte bancaire · Wallet · e-DINAR',
+  clictopay: {
+    name: 'Payer par carte bancaire',
+    desc: 'Visa · Mastercard · Cartes bancaires tunisiennes',
     icon: '💳',
-    color: '#E8DCD5',
+    color: '#D9A5A5',
     bg: 'rgba(217,165,165,0.08)',
-    border: 'rgba(217,165,165,0.2)',
-  },
-  paymee: {
-    name: 'Paymee',
-    desc: 'Paiement sécurisé en ligne',
-    icon: '🔐',
-    color: '#C084FC',
-    bg: 'rgba(192,132,252,0.08)',
-    border: 'rgba(192,132,252,0.2)',
+    border: 'rgba(217,165,165,0.3)',
   },
   ...(IS_DEV ? {
     test: {
-      name: 'Paiement test',
+      name: 'Paiement test (dev)',
       desc: 'Simule un paiement réussi instantanément',
       icon: '🧪',
       color: '#34D399',
@@ -38,6 +32,8 @@ const GATEWAY_INFO = {
 };
 
 export function PaymentPage() {
+  const { promoVisible } = useUiStore();
+  const pt = 64 + (promoVisible ? 36 : 0) + 32;
   const { quoteId }  = useParams();
   const [quote, setQuote]   = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +87,7 @@ export function PaymentPage() {
   return (
     <>
       <SEO title="Paiement sécurisé — PrestaLink" description="Finalisez votre acompte de manière sécurisée." />
-      <div className="min-h-screen pt-24 pb-16 px-4 relative" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen pb-16 px-4 relative" style={{ background: 'var(--bg)', paddingTop: pt }}>
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full"
             style={{ background: 'radial-gradient(circle, rgba(217,165,165,0.08), transparent 65%)', filter: 'blur(60px)' }} />
@@ -215,6 +211,7 @@ export function PaymentPage() {
 export function PaymentSuccessPage() {
   const search  = new URLSearchParams(window.location.search);
   const quoteId = search.get('quote');
+  const [showBrief, setShowBrief] = useState(false);
 
   return (
     <>
@@ -225,15 +222,34 @@ export function PaymentSuccessPage() {
             style={{ background: 'radial-gradient(circle, rgba(52,211,153,0.08), transparent 65%)', filter: 'blur(60px)' }} />
         </div>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-          className="relative text-center max-w-md">
+          className="relative text-center max-w-md w-full">
           <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"
             style={{ background: 'rgba(52,211,153,0.1)', border: '2px solid rgba(52,211,153,0.3)' }}>
             <CheckCircle size={44} style={{ color: '#34D399' }} />
           </div>
           <h1 className="font-display text-3xl font-bold mb-3" style={{ color: 'var(--text)' }}>Paiement réussi !</h1>
-          <p className="mb-8 text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
+          <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--text-2)' }}>
             Votre acompte a bien été reçu. Une confirmation vous sera envoyée par email.
           </p>
+
+          {quoteId && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="mb-6 p-4 rounded-2xl text-left"
+              style={{ background: 'rgba(217,165,165,0.06)', border: '1px solid rgba(217,165,165,0.2)' }}>
+              <div className="flex items-center gap-3 mb-2">
+                <FileText size={16} style={{ color: '#D9A5A5' }} />
+                <p className="font-display font-semibold text-sm" style={{ color: 'var(--text)' }}>Ordre de mission</p>
+              </div>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-3)' }}>
+                Remplissez le formulaire de votre événement pour que le prestataire soit parfaitement préparé.
+              </p>
+              <button onClick={() => setShowBrief(true)}
+                className="w-full btn btn-primary gap-2 text-sm py-2.5">
+                <FileText size={14} /> Remplir l'ordre de mission
+              </button>
+            </motion.div>
+          )}
+
           <div className="flex gap-3 justify-center flex-wrap">
             {quoteId && (
               <Link to="/mes-devis" className="btn btn-outline gap-2">Voir mes devis</Link>
@@ -244,6 +260,10 @@ export function PaymentSuccessPage() {
           </div>
         </motion.div>
       </div>
+
+      {showBrief && quoteId && (
+        <EventBriefModal quoteId={quoteId} quoteName="Votre événement" onClose={() => setShowBrief(false)} />
+      )}
     </>
   );
 }
