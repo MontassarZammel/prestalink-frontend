@@ -33,6 +33,8 @@ const fmtShort = d => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeri
 const autoPrice = r => {
   if (r.price_per_person && r.guest_count)
     return Math.round(Number(r.price_per_person) * Number(r.guest_count));
+  if (r.type_slug === 'photographes' && r.standard_fee && Number(r.standard_fee) > 0)
+    return Number(r.standard_fee);
   if (r.price_min && Number(r.price_min) > 0)
     return Number(r.price_min);
   return '';
