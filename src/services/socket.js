@@ -11,7 +11,8 @@ const readToken = () => {
 
 export const getSocket = () => {
   if (!socket) {
-    socket = io('http://localhost:4000', {
+    const BACKEND = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+    socket = io(BACKEND, {
       auth: { token: readToken() },
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
