@@ -961,12 +961,14 @@ export default function ProviderDetailPage() {
           setReviewsMeta({ avg: rr.data.avg, total: rr.data.total });
         }).catch(() => {});
         // Find if logged-in user has an eligible quote for this provider
-        api.get('/quotes/my').then(rq => {
-          const eligible = (rq.data.data || []).find(
-            q => q.provider_id === p.id && ['sent','accepted'].includes(q.status)
-          );
-          if (eligible) setUserQuoteId(eligible.id);
-        }).catch(() => {});
+        if (isAuthenticated) {
+          api.get('/quotes/my').then(rq => {
+            const eligible = (rq.data.data || []).find(
+              q => q.provider_id === p.id && ['sent','accepted'].includes(q.status)
+            );
+            if (eligible) setUserQuoteId(eligible.id);
+          }).catch(() => {});
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
