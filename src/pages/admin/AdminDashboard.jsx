@@ -21,19 +21,19 @@ const STATUS_LABEL = { draft: 'Brouillon', sent: 'Envoyé', accepted: 'Accepté'
 const StatCard = ({ icon: Icon, label, value, sub, gradient, delay = 0, to }) => {
   const content = (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
-      className="relative overflow-hidden rounded-2xl p-5 border transition-all"
+      className="relative overflow-hidden rounded-2xl p-4 sm:p-5 border transition-all"
       style={{ background: 'var(--adm-surface)', borderColor: 'var(--adm-border)' }}>
       <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-5 -translate-y-1/2 translate-x-1/2"
         style={{ background: gradient }} />
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
           style={{ background: `${gradient}20`, border: `1px solid ${gradient}30` }}>
-          <Icon size={18} style={{ color: gradient }} />
+          <Icon size={16} style={{ color: gradient }} />
         </div>
       </div>
-      <p className="text-xs font-semibold uppercase tracking-widest mb-1 font-display" style={{ color: 'var(--adm-text2)' }}>{label}</p>
-      <p className="font-display text-3xl font-bold" style={{ color: 'var(--adm-text)', letterSpacing: '-0.03em' }}>{value}</p>
-      {sub && <p className="text-xs mt-1" style={{ color: 'var(--adm-text2)' }}>{sub}</p>}
+      <p className="text-xs font-semibold uppercase tracking-widest mb-1 font-display truncate" style={{ color: 'var(--adm-text2)' }}>{label}</p>
+      <p className="font-display text-2xl sm:text-3xl font-bold truncate" style={{ color: 'var(--adm-text)', letterSpacing: '-0.03em' }}>{value}</p>
+      {sub && <p className="text-xs mt-1 truncate" style={{ color: 'var(--adm-text2)' }}>{sub}</p>}
     </motion.div>
   );
   return to ? <Link to={to} className="block">{content}</Link> : content;
@@ -75,9 +75,9 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="space-y-7 max-w-[1400px]">
+    <div className="space-y-5 max-w-[1400px]">
       <div>
-        <h1 className="font-display text-3xl font-bold mb-1" style={{ color: 'var(--adm-text)', letterSpacing: '-0.03em' }}>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--adm-text)', letterSpacing: '-0.03em' }}>
           Dashboard
         </h1>
         <p className="text-sm" style={{ color: 'var(--adm-text2)' }}>Tableau de bord MyWedding</p>
@@ -98,17 +98,17 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts row */}
-      <div className="grid lg:grid-cols-3 gap-5">
+      <div className="grid lg:grid-cols-3 gap-4">
         {/* Monthly revenue chart */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
-          className="lg:col-span-2 rounded-2xl p-6 border"
+          className="lg:col-span-2 rounded-2xl p-4 sm:p-6 border"
           style={{ background: 'var(--adm-surface)', borderColor: 'var(--adm-border)' }}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-lg font-bold" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
-              Évolution mensuelle — {new Date().getFullYear()}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-base sm:text-lg font-bold" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
+              Évolution — {new Date().getFullYear()}
             </h2>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -127,9 +127,9 @@ export default function AdminDashboard() {
 
         {/* Quick actions */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-          className="rounded-2xl p-6 border"
+          className="rounded-2xl p-4 sm:p-6 border"
           style={{ background: 'var(--adm-surface)', borderColor: 'var(--adm-border)' }}>
-          <h2 className="font-display text-lg font-bold mb-5" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
+          <h2 className="font-display text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
             Actions rapides
           </h2>
           <div className="space-y-2">
@@ -162,13 +162,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Top providers + recent quotes */}
-      <div className="grid lg:grid-cols-2 gap-5">
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* Top providers */}
         {stats?.topProviders?.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
-            className="rounded-2xl p-6 border"
+            className="rounded-2xl p-4 sm:p-6 border"
             style={{ background: 'var(--adm-surface)', borderColor: 'var(--adm-border)' }}>
-            <h2 className="font-display text-lg font-bold mb-5" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
+            <h2 className="font-display text-base sm:text-lg font-bold mb-4" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
               Top prestataires
             </h2>
             <div className="space-y-3">
@@ -212,19 +212,19 @@ export default function AdminDashboard() {
           ) : (
             <div className="divide-y" style={{ borderColor: 'var(--adm-border)' }}>
               {stats.recentQuotes.map(q => (
-                <div key={q.id} className="flex items-center justify-between px-5 py-3.5 gap-3 transition-colors"
+                <div key={q.id} className="flex items-center justify-between px-4 sm:px-5 py-3 gap-2 transition-colors"
                   style={{ cursor: 'default' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--adm-surface2)'}
                   onMouseLeave={e => e.currentTarget.style.background = ''}>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="font-display font-semibold text-sm truncate" style={{ color: 'var(--adm-text)' }}>{q.client_name}</p>
                     <p className="text-xs truncate" style={{ color: 'var(--adm-text2)' }}>{q.provider_name}</p>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className={STATUS_BADGE[q.status] || 'adm-badge adm-badge-gray'}>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`hidden sm:inline-flex ${STATUS_BADGE[q.status] || 'adm-badge adm-badge-gray'}`}>
                       {STATUS_LABEL[q.status] || q.status}
                     </span>
-                    <span className="text-sm font-bold text-emerald-400 font-display">
+                    <span className="text-sm font-bold text-emerald-400 font-display whitespace-nowrap">
                       {Number(q.price_after_discount).toLocaleString('fr-TN')} TND
                     </span>
                   </div>

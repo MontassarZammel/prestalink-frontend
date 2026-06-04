@@ -209,7 +209,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-6 scroll-adm" style={{ background: 'var(--adm-bg)' }}>
+        <main className="flex-1 overflow-auto p-3 sm:p-6 scroll-adm" style={{ background: 'var(--adm-bg)' }}>
           <Outlet />
         </main>
       </div>

@@ -360,8 +360,8 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
         style={{ background: 'var(--adm-surface)', borderColor: 'var(--adm-border)' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b flex-shrink-0" style={{ borderColor: 'var(--adm-border)' }}>
-          <h2 id="pf-title" className="font-display text-xl font-bold" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
+        <div className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b flex-shrink-0" style={{ borderColor: 'var(--adm-border)' }}>
+          <h2 id="pf-title" className="font-display text-lg sm:text-xl font-bold" style={{ color: 'var(--adm-text)', letterSpacing: '-0.02em' }}>
             {provider ? 'Modifier le prestataire' : 'Nouveau prestataire'}
           </h2>
           <button onClick={onClose} className="p-2 rounded-xl transition-all" style={{ color: 'var(--adm-text2)' }}
@@ -372,7 +372,7 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-6 pt-4 flex-shrink-0">
+        <div className="flex gap-1 px-3 sm:px-6 pt-3 flex-shrink-0 overflow-x-auto scroll-thin">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all font-display ${
@@ -388,7 +388,7 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
         </div>
 
         {/* Form body */}
-        <div className="overflow-y-auto flex-1 px-7 py-5 scroll-adm">
+        <div className="overflow-y-auto flex-1 px-4 sm:px-7 py-4 sm:py-5 scroll-adm">
           {tab === 'info' && (
             <div className="space-y-4">
               <Field label="Type de prestataire *">
@@ -432,7 +432,7 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
 
           {tab === 'contact' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Email">
                   <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     className="adm-input w-full" placeholder="contact@prestataire.tn" />
@@ -450,7 +450,7 @@ const ProviderForm = ({ provider, types, onSave, onClose }) => {
                 <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
                   className="adm-input w-full" placeholder="Rue, quartier..." />
               </Field>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Ville">
                   <input type="text" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
                     className="adm-input w-full" placeholder="Ex: Tunis" />
