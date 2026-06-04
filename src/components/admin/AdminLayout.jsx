@@ -73,7 +73,7 @@ export default function AdminLayout() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5" aria-label="Navigation administration">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scroll-adm" aria-label="Navigation administration">
         {NAV_ITEMS.map(item => {
           const active = isActive(item);
           return (
@@ -106,7 +106,7 @@ export default function AdminLayout() {
       </nav>
 
       {/* User footer */}
-      <div className="px-3 py-4 border-t space-y-2" style={{ borderColor: 'var(--adm-border)' }}>
+      <div className="flex-shrink-0 px-3 py-4 border-t space-y-2" style={{ borderColor: 'var(--adm-border)' }}>
         <div className="flex items-center gap-3 px-3 py-3 rounded-xl" style={{ background: 'var(--adm-surface2)' }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
             style={{ background: 'linear-gradient(135deg,#C48C8C,#D9A5A5)' }}>
